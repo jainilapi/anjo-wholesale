@@ -11,7 +11,7 @@ class UserController extends Controller
     protected $title = 'Users';
     protected $view = 'users.';
 
-    protected static $excludeRoles = [];
+    protected static $excludeRoles = ['customer'];
 
     public function __construct()
     {

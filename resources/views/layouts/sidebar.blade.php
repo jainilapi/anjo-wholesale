@@ -25,31 +25,26 @@
             @if(auth()->user()->isAdmin() || auth()->user()->can('users.index') || auth()->user()->can('roles.index'))
             <li class="sidebar-item @if( request()->segment(1) == 'users' || request()->segment(1) == 'roles') active @endif">
                 <a data-bs-target="#dashboards" data-bs-toggle="collapse" class="sidebar-link">
-                    <i class="align-middle me-2 fas fa-fw fa-users"></i> <span class="align-middle">User Management</span>
+                    <i class="align-middle me-2 fas fa-fw fa-users"></i> <span class="align-middle">Internal Users Management</span>
                 </a>
                 <ul id="dashboards" class="sidebar-dropdown list-unstyled collapse show" data-bs-parent="#sidebar">
-                    <li class="sidebar-item"><a class='sidebar-link' href='{{ route('users.index') }}'>Users</a></li>
-                    <li class="sidebar-item active"><a class='sidebar-link' href='{{ route('roles.index') }}'>Roles</a></li>
+                    <li class="sidebar-item @if(request()->segment(1) == 'users') active @endif"><a class='sidebar-link' href='{{ route('users.index') }}'>Users</a></li>
+                    <li class="sidebar-item @if(request()->segment(1) == 'roles') active @endif"><a class='sidebar-link' href='{{ route('roles.index') }}'>Roles</a></li>
                 </ul>
             </li>
             @endif
 
-            @if(auth()->user()->isAdmin() || auth()->user()->can('customers.index'))
-            <li class="sidebar-item @if( request()->segment(1) == 'customers') active @endif">
-                <a href="{{ route('customers.index') }}" class="sidebar-link">
-                    <i class="align-middle me-2 fas fa-fw fa-user-tie"></i> <span class="align-middle">Customers</span>
+            @if(auth()->user()->isAdmin() || auth()->user()->can('customers.index') || auth()->user()->can('locations.index'))
+            <li class="sidebar-item @if( request()->segment(1) == 'customers' || request()->segment(1) == 'locations') active @endif">
+                <a data-bs-target="#dashboards" data-bs-toggle="collapse" class="sidebar-link">
+                    <i class="align-middle me-2 fas fa-fw fa-user-tie"></i> <span class="align-middle">Customers Management</span>
                 </a>
+                <ul id="dashboards" class="sidebar-dropdown list-unstyled collapse show" data-bs-parent="#sidebar">
+                    <li class="sidebar-item @if(request()->segment(1) == 'customers') active @endif"><a class='sidebar-link' href='{{ route('customers.index') }}'>Customers</a></li>
+                    <li class="sidebar-item @if(request()->segment(1) == 'locations') active @endif"><a class='sidebar-link' href='{{ route('locations.index') }}'>Locations</a></li>
+                </ul>
             </li>
             @endif
-
-            @if(auth()->user()->isAdmin() || auth()->user()->can('locations.index'))
-            <li class="sidebar-item @if( request()->segment(1) == 'locations') active @endif">
-                <a href="{{ route('locations.index') }}" class="sidebar-link">
-                    <i class="align-middle me-2 fas fa-fw fa-map-marker-alt"></i> <span class="align-middle">Locations</span>
-                </a>
-            </li>
-            @endif
-
 
             <li class="sidebar-item @if(request()->segment(1) == 'gift-redemptions') active @endif">
                 <form action="{{ route('logout') }}" method="POST"> @csrf
