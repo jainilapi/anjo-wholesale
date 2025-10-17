@@ -54,8 +54,8 @@
             </li>
             @endif
 
-            @if(auth()->user()->isAdmin() || auth()->user()->can('categories.index') || auth()->user()->can('products.index'))
-            <li class="sidebar-item @if( request()->segment(1) == 'categories' || request()->segment(1) == 'products') active @endif">
+            @if(auth()->user()->isAdmin() || auth()->user()->can('categories.index') || auth()->user()->can('products.index') || auth()->user()->can('brands.index'))
+            <li class="sidebar-item @if( request()->segment(1) == 'categories' || request()->segment(1) == 'products' || request()->segment(1) == 'brands') active @endif">
                 <a data-bs-target="#catalogMenu" data-bs-toggle="collapse" class="sidebar-link">
                     <i class="align-middle me-2 fas fa-fw fa-boxes"></i> <span class="align-middle">Catalog</span>
                 </a>
@@ -65,6 +65,9 @@
                     @endif
                     @if(auth()->user()->isAdmin() || auth()->user()->can('products.index'))
                     <li class="sidebar-item @if(request()->segment(1) == 'products') active @endif"><a class='sidebar-link' href='{{ route('products.index') }}'>Products</a></li>
+                    @endif
+                    @if(auth()->user()->isAdmin() || auth()->user()->can('brands.index'))
+                    <li class="sidebar-item @if(request()->segment(1) == 'brands') active @endif"><a class='sidebar-link' href='{{ route('brands.index') }}'>Brands</a></li>
                     @endif
                 </ul>
             </li>

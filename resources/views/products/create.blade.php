@@ -35,6 +35,17 @@
                                 @error('category_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="brands" class="form-label">Brands</label>
+                                <select class="form-select select2 @error('brands') is-invalid @enderror" id="brands" name="brands[]" multiple>
+                                    @foreach($brands as $id => $name)
+                                        <option value="{{ $id }}" {{ (collect(old('brands'))->contains($id)) ? 'selected' : '' }}>{{ $name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('brands')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -80,6 +91,7 @@
 <script>
 $(document).ready(function() {
     $('#category_id').select2({ placeholder: 'Select category', width: '100%' });
+    $('#brands').select2({ placeholder: 'Select brands', width: '100%' });
 
     const quill = new Quill('#editor', { theme: 'snow' });
     quill.on('text-change', function() {

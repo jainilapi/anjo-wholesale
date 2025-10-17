@@ -216,6 +216,35 @@ class PermissionSeeder extends Seeder
             [
                 'name' => 'Products Delete',
                 'slug' => 'products.destroy'
+            ],
+
+            [
+                'name' => 'Brands Listing',
+                'slug' => 'brands.index'
+            ],
+            [
+                'name' => 'Brands Add',
+                'slug' => 'brands.create'
+            ],
+            [
+                'name' => 'Brands Save',
+                'slug' => 'brands.store'
+            ],
+            [
+                'name' => 'Brands Edit',
+                'slug' => 'brands.edit'
+            ],
+            [
+                'name' => 'Brands Update',
+                'slug' => 'brands.update'
+            ],
+            [
+                'name' => 'Brands View',
+                'slug' => 'brands.show'
+            ],
+            [
+                'name' => 'Brands Delete',
+                'slug' => 'brands.destroy'
             ]
         ];
 

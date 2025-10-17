@@ -36,12 +36,18 @@ class ProductController extends Controller
 
     public function ajax()
     {
-        $query = Product::with('category');
+        $query = Product::with(['category', 'brands']);
 
         return datatables()
         ->eloquent($query)
         ->addColumn('category_name', function ($row) {
             return $row->category?->name ?? '—';
+        })
+        ->addColumn('brands', function ($row) {
+            if ($row->brands->isEmpty()) return '—';
+            return $row->brands->map(function($b){
+                return '<span class="badge bg-light text-dark">'.e($b->name).'</span>';
+            })->implode(' ');
         })
         ->addColumn('status_badge', function ($row) {
             return $row->status ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>';
@@ -62,7 +68,7 @@ class ProductController extends Controller
             }
             return $html;
         })
-        ->rawColumns(['action', 'status_badge', 'stock_badge'])
+        ->rawColumns(['action', 'status_badge', 'stock_badge', 'brands'])
         ->addIndexColumn()
         ->toJson();
     }
@@ -75,7 +81,8 @@ class ProductController extends Controller
         $title = $this->title;
         $subTitle = 'Add New Product';
         $categories = Category::pluck('name', 'id');
-        return view($this->view . 'create', compact('title', 'subTitle', 'categories'));
+        $brands = \App\Models\Brand::where('status', 1)->orderBy('name')->pluck('name', 'id');
+        return view($this->view . 'create', compact('title', 'subTitle', 'categories', 'brands'));
     }
 
     /**
@@ -91,7 +98,9 @@ class ProductController extends Controller
             'images' => 'nullable|array',
             'images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'status' => 'nullable|boolean',
-            'in_stock' => 'nullable|boolean'
+            'in_stock' => 'nullable|boolean',
+            'brands' => 'nullable|array',
+            'brands.*' => 'nullable|exists:brands,id'
         ]);
 
         DB::beginTransaction();
@@ -114,7 +123,8 @@ class ProductController extends Controller
                 'in_stock' => (bool) $request->input('in_stock', true),
             ];
 
-            Product::create($data);
+            $product = Product::create($data);
+            $product->brands()->sync($request->input('brands', []));
             DB::commit();
             return redirect()->route('products.index')->with('success', 'Product created successfully.');
         } catch (\Exception $e) {
@@ -143,7 +153,8 @@ class ProductController extends Controller
         $title = $this->title;
         $subTitle = 'Edit Product';
         $categories = Category::pluck('name', 'id');
-        return view($this->view . 'edit', compact('title', 'subTitle', 'product', 'categories'));
+        $brands = \App\Models\Brand::where('status', 1)->orderBy('name')->pluck('name', 'id');
+        return view($this->view . 'edit', compact('title', 'subTitle', 'product', 'categories', 'brands'));
     }
 
     /**
@@ -160,7 +171,9 @@ class ProductController extends Controller
             'images' => 'nullable|array',
             'images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'status' => 'nullable|boolean',
-            'in_stock' => 'nullable|boolean'
+            'in_stock' => 'nullable|boolean',
+            'brands' => 'nullable|array',
+            'brands.*' => 'nullable|exists:brands,id'
         ]);
 
         DB::beginTransaction();
@@ -184,6 +197,7 @@ class ProductController extends Controller
             ];
 
             $product->update($data);
+            $product->brands()->sync($request->input('brands', []));
             DB::commit();
             return redirect()->route('products.index')->with('success', 'Product updated successfully.');
         } catch (\Exception $e) {

@@ -16,6 +16,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('warehouses', \App\Http\Controllers\WarehouseController::class);
     Route::resource('categories', \App\Http\Controllers\CategoryController::class);
     Route::resource('products', \App\Http\Controllers\ProductController::class);
+    Route::resource('brands', \App\Http\Controllers\BrandController::class);
 
     Route::post('state-list', [\App\Helpers\Helper::class, 'getStatesByCountry'])->name('state-list');
     Route::post('city-list', [\App\Helpers\Helper::class, 'getCitiesByState'])->name('city-list');

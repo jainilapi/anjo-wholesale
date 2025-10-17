@@ -5,8 +5,8 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <a href="{{ route('products.create') }}" class="btn btn-primary float-end">
-                    <i class="fa fa-plus"></i> Add New Product
+                <a href="{{ route('brands.create') }}" class="btn btn-primary float-end">
+                    <i class="fa fa-plus"></i> Add New Brand
                 </a>
             </div>
             <div class="card-body">
@@ -14,12 +14,10 @@
                     <thead>
                         <tr>
                             <th>#</th>
+                            <th>Logo</th>
                             <th>Name</th>
-                            <th>SKU</th>
-                            <th>Category</th>
+                            <th>Slug</th>
                             <th>Status</th>
-                            <th>Stock</th>
-                            <th>Brands</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -42,12 +40,10 @@ $(document).ready(function () {
         ajax: { url: "{{ route(Request::route()->getName()) }}", type: "GET" },
         columns: [
             { data: 'DT_RowIndex', orderable: false, searchable: false },
+            { data: 'logo_img', orderable: false, searchable: false },
             { data: 'name' },
-            { data: 'sku' },
-            { data: 'category_name' },
+            { data: 'slug' },
             { data: 'status_badge', orderable: false, searchable: false },
-            { data: 'stock_badge', orderable: false, searchable: false },
-            { data: 'brands', orderable: false, searchable: false },
             { data: 'action', orderable: false, searchable: false }
         ],
     });

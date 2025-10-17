@@ -16,6 +16,21 @@
                     <div class="col-md-4"><strong>Stock:</strong> {{ $product->in_stock ? 'In stock' : 'Out of stock' }}</div>
                 </div>
                 <div class="mb-3">
+                    <strong>Brands:</strong>
+                    <div class="d-flex flex-wrap gap-2 mt-1">
+                        @forelse(($product->brands ?? []) as $brand)
+                            <span class="badge bg-light text-dark d-flex align-items-center" style="gap:6px;">
+                                @if($brand->logo)
+                                    <img src="{{ asset('storage/'.$brand->logo) }}" style="height:18px;width:18px;object-fit:contain;"/>
+                                @endif
+                                {{ $brand->name }}
+                            </span>
+                        @empty
+                            —
+                        @endforelse
+                    </div>
+                </div>
+                <div class="mb-3">
                     <strong>Description:</strong>
                     <div>{!! $product->description !!}</div>
                 </div>
