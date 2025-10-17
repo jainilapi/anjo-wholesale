@@ -158,6 +158,64 @@ class PermissionSeeder extends Seeder
             [
                 'name' => 'Warehouses Delete',
                 'slug' => 'warehouses.destroy'
+            ],
+
+            [
+                'name' => 'Categories Listing',
+                'slug' => 'categories.index'
+            ],
+            [
+                'name' => 'Categories Add',
+                'slug' => 'categories.create'
+            ],
+            [
+                'name' => 'Categories Save',
+                'slug' => 'categories.store'
+            ],
+            [
+                'name' => 'Categories Edit',
+                'slug' => 'categories.edit'
+            ],
+            [
+                'name' => 'Categories Update',
+                'slug' => 'categories.update'
+            ],
+            [
+                'name' => 'Categories View',
+                'slug' => 'categories.show'
+            ],
+            [
+                'name' => 'Categories Delete',
+                'slug' => 'categories.destroy'
+            ],
+
+            [
+                'name' => 'Products Listing',
+                'slug' => 'products.index'
+            ],
+            [
+                'name' => 'Products Add',
+                'slug' => 'products.create'
+            ],
+            [
+                'name' => 'Products Save',
+                'slug' => 'products.store'
+            ],
+            [
+                'name' => 'Products Edit',
+                'slug' => 'products.edit'
+            ],
+            [
+                'name' => 'Products Update',
+                'slug' => 'products.update'
+            ],
+            [
+                'name' => 'Products View',
+                'slug' => 'products.show'
+            ],
+            [
+                'name' => 'Products Delete',
+                'slug' => 'products.destroy'
             ]
         ];
 

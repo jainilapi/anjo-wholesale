@@ -54,6 +54,22 @@
             </li>
             @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->can('categories.index') || auth()->user()->can('products.index'))
+            <li class="sidebar-item @if( request()->segment(1) == 'categories' || request()->segment(1) == 'products') active @endif">
+                <a data-bs-target="#catalogMenu" data-bs-toggle="collapse" class="sidebar-link">
+                    <i class="align-middle me-2 fas fa-fw fa-boxes"></i> <span class="align-middle">Catalog</span>
+                </a>
+                <ul id="catalogMenu" class="sidebar-dropdown list-unstyled collapse show" data-bs-parent="#sidebar">
+                    @if(auth()->user()->isAdmin() || auth()->user()->can('categories.index'))
+                    <li class="sidebar-item @if(request()->segment(1) == 'categories') active @endif"><a class='sidebar-link' href='{{ route('categories.index') }}'>Categories</a></li>
+                    @endif
+                    @if(auth()->user()->isAdmin() || auth()->user()->can('products.index'))
+                    <li class="sidebar-item @if(request()->segment(1) == 'products') active @endif"><a class='sidebar-link' href='{{ route('products.index') }}'>Products</a></li>
+                    @endif
+                </ul>
+            </li>
+            @endif
+
             <li class="sidebar-item @if(request()->segment(1) == 'gift-redemptions') active @endif">
                 <form action="{{ route('logout') }}" method="POST"> @csrf
                     <button type="submit" class="sidebar-link" style="width: 100%;text-align: left;border: none;">
