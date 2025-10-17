@@ -58,5 +58,20 @@ class User extends Authenticatable
 
     public static function isAdmin() {
         return boolval(auth()->user()->roles->where('slug', 'admin')->count());
-    }    
+    }
+
+    public function country()
+    {
+        return $this->belongsTo(Country::class);
+    }
+
+    public function state()
+    {
+        return $this->belongsTo(State::class);
+    }
+
+    public function city()
+    {
+        return $this->belongsTo(City::class);
+    }
 }

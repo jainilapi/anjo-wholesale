@@ -71,6 +71,35 @@ class PermissionSeeder extends Seeder
             [
                 'name' => 'Roles Delete',
                 'slug' => 'roles.destroy'
+            ],
+
+            [
+                'name' => 'Customers Listing',
+                'slug' => 'customers.index'
+            ],
+            [
+                'name' => 'Customers Add',
+                'slug' => 'customers.create'
+            ],
+            [
+                'name' => 'Customers Save',
+                'slug' => 'customers.store'
+            ],
+            [
+                'name' => 'Customers Edit',
+                'slug' => 'customers.edit'
+            ],
+            [
+                'name' => 'Customers Update',
+                'slug' => 'customers.update'
+            ],
+            [
+                'name' => 'Customers View',
+                'slug' => 'customers.show'
+            ],
+            [
+                'name' => 'Customers Delete',
+                'slug' => 'customers.destroy'
             ]
         ];
 

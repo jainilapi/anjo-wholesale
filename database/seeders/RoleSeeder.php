@@ -38,6 +38,8 @@ class RoleSeeder extends Seeder
             ]
         ];
 
-        \Spatie\Permission\Models\Role::insert($roles);
+        foreach ($roles as $role) {
+            \Spatie\Permission\Models\Role::updateOrCreate(['slug' => $role['slug']], $role);
+        }
     }
 }

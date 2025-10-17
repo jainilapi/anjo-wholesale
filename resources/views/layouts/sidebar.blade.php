@@ -34,6 +34,14 @@
             </li>
             @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->can('customers.index'))
+            <li class="sidebar-item @if( request()->segment(1) == 'customers') active @endif">
+                <a href="{{ route('customers.index') }}" class="sidebar-link">
+                    <i class="align-middle me-2 fas fa-fw fa-user-tie"></i> <span class="align-middle">Customers</span>
+                </a>
+            </li>
+            @endif
+
 
             <li class="sidebar-item @if(request()->segment(1) == 'gift-redemptions') active @endif">
                 <form action="{{ route('logout') }}" method="POST"> @csrf
