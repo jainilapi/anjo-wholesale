@@ -13,6 +13,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('roles', \App\Http\Controllers\RoleController::class);
     Route::resource('customers', \App\Http\Controllers\CustomerController::class);
     Route::resource('locations', \App\Http\Controllers\LocationController::class);
+    Route::resource('warehouses', \App\Http\Controllers\WarehouseController::class);
 
     Route::post('state-list', [\App\Helpers\Helper::class, 'getStatesByCountry'])->name('state-list');
     Route::post('city-list', [\App\Helpers\Helper::class, 'getCitiesByState'])->name('city-list');

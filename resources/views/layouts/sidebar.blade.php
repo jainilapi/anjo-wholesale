@@ -46,6 +46,14 @@
             </li>
             @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->can('warehouses.index'))
+            <li class="sidebar-item @if( request()->segment(1) == 'warehouses') active @endif">
+                <a href="{{ route('warehouses.index') }}" class="sidebar-link">
+                    <i class="align-middle me-2 fas fa-fw fa-warehouse"></i> <span class="align-middle">Warehouses</span>
+                </a>
+            </li>
+            @endif
+
             <li class="sidebar-item @if(request()->segment(1) == 'gift-redemptions') active @endif">
                 <form action="{{ route('logout') }}" method="POST"> @csrf
                     <button type="submit" class="sidebar-link" style="width: 100%;text-align: left;border: none;">

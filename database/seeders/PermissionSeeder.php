@@ -129,6 +129,35 @@ class PermissionSeeder extends Seeder
             [
                 'name' => 'Locations Delete',
                 'slug' => 'locations.destroy'
+            ],
+
+            [
+                'name' => 'Warehouses Listing',
+                'slug' => 'warehouses.index'
+            ],
+            [
+                'name' => 'Warehouses Add',
+                'slug' => 'warehouses.create'
+            ],
+            [
+                'name' => 'Warehouses Save',
+                'slug' => 'warehouses.store'
+            ],
+            [
+                'name' => 'Warehouses Edit',
+                'slug' => 'warehouses.edit'
+            ],
+            [
+                'name' => 'Warehouses Update',
+                'slug' => 'warehouses.update'
+            ],
+            [
+                'name' => 'Warehouses View',
+                'slug' => 'warehouses.show'
+            ],
+            [
+                'name' => 'Warehouses Delete',
+                'slug' => 'warehouses.destroy'
             ]
         ];
 

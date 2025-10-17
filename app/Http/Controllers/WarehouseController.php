@@ -3,26 +3,24 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Location;
-use App\Models\User;
+use App\Models\Warehouse;
 use App\Models\Country;
 use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
 
-class LocationController extends Controller
+class WarehouseController extends Controller
 {
-    protected $title = 'Locations';
-    protected $view = 'locations.';
+    protected $title = 'Warehouses';
+    protected $view = 'warehouses.';
 
     public function __construct()
     {
-        $this->middleware('permission:locations.index')->only(['index']);
-        $this->middleware('permission:locations.create')->only(['create']);
-        $this->middleware('permission:locations.store')->only(['store']);
-        $this->middleware('permission:locations.edit')->only(['edit']);
-        $this->middleware('permission:locations.update')->only(['update']);
-        $this->middleware('permission:locations.show')->only(['show']);
-        $this->middleware('permission:locations.destroy')->only(['destroy']);
+        $this->middleware('permission:warehouses.index')->only(['index']);
+        $this->middleware('permission:warehouses.create')->only(['create']);
+        $this->middleware('permission:warehouses.store')->only(['store']);
+        $this->middleware('permission:warehouses.edit')->only(['edit']);
+        $this->middleware('permission:warehouses.update')->only(['update']);
+        $this->middleware('permission:warehouses.show')->only(['show']);
+        $this->middleware('permission:warehouses.destroy')->only(['destroy']);
     }
 
     public function index()
@@ -32,22 +30,17 @@ class LocationController extends Controller
         }
 
         $title = $this->title;
-        $subTitle = 'Manage locations here';
+        $subTitle = 'Manage warehouses here';
 
         return view($this->view . 'index', compact('title', 'subTitle'));
     }
 
     public function ajax()
     {
-        $customerRole = Role::where('slug', 'customer')->first();
-        
-        $query = Location::with(['customer', 'country', 'state', 'city']);
+        $query = Warehouse::with(['country', 'state', 'city']);
 
         return datatables()
         ->eloquent($query)
-        ->addColumn('customer_name', function ($row) {
-            return $row->customer ? $row->customer->name : 'N/A';
-        })
         ->addColumn('address', function ($row) {
             $address = $row->address_line_1;
             if ($row->address_line_2) {
@@ -71,16 +64,16 @@ class LocationController extends Controller
         ->addColumn('action', function ($row) {
             $html = '';
 
-            if (auth()?->user()?->isAdmin() || auth()->user()->can('locations.edit')) {
-                $html .= '<a href="' . route('locations.edit', encrypt($row->id)) . '" class="btn btn-sm btn-primary"> <i class="fa fa-edit"> </i> </a>&nbsp;';
+            if (auth()?->user()?->isAdmin() || auth()->user()->can('warehouses.edit')) {
+                $html .= '<a href="' . route('warehouses.edit', encrypt($row->id)) . '" class="btn btn-sm btn-primary"> <i class="fa fa-edit"> </i> </a>&nbsp;';
             }
 
-            if (auth()?->user()?->isAdmin() || auth()->user()->can('locations.destroy')) {
-                $html .= '<button type="button" class="btn btn-sm btn-danger" id="deleteRow" data-row-route="' . route('locations.destroy', $row->id) . '"> <i class="fa fa-trash"> </i> </button>&nbsp;';
+            if (auth()?->user()?->isAdmin() || auth()->user()->can('warehouses.destroy')) {
+                $html .= '<button type="button" class="btn btn-sm btn-danger" id="deleteRow" data-row-route="' . route('warehouses.destroy', $row->id) . '"> <i class="fa fa-trash"> </i> </button>&nbsp;';
             }
 
-            if (auth()?->user()?->isAdmin() || auth()->user()->can('locations.show')) {
-                $html .= '<a href="' . route('locations.show', encrypt($row->id)) . '" class="btn btn-sm btn-secondary"> <i class="fa fa-eye"> </i> </a>';
+            if (auth()?->user()?->isAdmin() || auth()->user()->can('warehouses.show')) {
+                $html .= '<a href="' . route('warehouses.show', encrypt($row->id)) . '" class="btn btn-sm btn-secondary"> <i class="fa fa-eye"> </i> </a>';
             }
 
             return $html;
@@ -93,20 +86,16 @@ class LocationController extends Controller
     public function create()
     {
         $title = $this->title;
-        $subTitle = 'Add New Location';
-        $customers = User::whereHas('roles', function ($query) {
-            $query->where('slug', 'customer');
-        })->pluck('name', 'id');
+        $subTitle = 'Add New Warehouse';
         $countries = Country::pluck('name', 'id');
-        return view($this->view . 'create', compact('title', 'subTitle', 'customers', 'countries'));
+        return view($this->view . 'create', compact('title', 'subTitle', 'countries'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'customer_id' => 'required|exists:users,id',
-            'name' => 'required|string',
-            'code' => 'required|string|max:20|unique:locations,code',
+            'code' => 'required|string|max:20|unique:warehouses,code',
+            'name' => 'required|string|max:255',
             'address_line_1' => 'required|string|max:255',
             'address_line_2' => 'nullable|string|max:255',
             'country_id' => 'required|exists:countries,id',
@@ -124,48 +113,44 @@ class LocationController extends Controller
 
         try {
             $data = $request->only([
-                'name', 'code', 'customer_id', 'address_line_1', 'address_line_2', 'country_id', 
+                'code', 'name', 'address_line_1', 'address_line_2', 'country_id', 
                 'state_id', 'city_id', 'zipcode', 'email', 'contact_number', 
                 'fax', 'latitude', 'longitude'
             ]);
 
-            Location::create($data);
+            Warehouse::create($data);
 
             DB::commit();
-            return redirect()->route('locations.index')->with('success', 'Location created successfully.');
+            return redirect()->route('warehouses.index')->with('success', 'Warehouse created successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->route('locations.index')->with('error', 'Something Went Wrong.');
+            return redirect()->route('warehouses.index')->with('error', 'Something Went Wrong.');
         }
     }
 
     public function show(string $id)
     {
-        $location = Location::with(['customer', 'country', 'state', 'city'])->findOrFail(decrypt($id));
+        $warehouse = Warehouse::with(['country', 'state', 'city'])->findOrFail(decrypt($id));
         $title = $this->title;
-        $subTitle = 'Location Details';
-        return view($this->view . 'view', compact('title', 'subTitle', 'location'));
+        $subTitle = 'Warehouse Details';
+        return view($this->view . 'view', compact('title', 'subTitle', 'warehouse'));
     }
 
     public function edit(string $id)
     {
-        $location = Location::findOrFail(decrypt($id));
+        $warehouse = Warehouse::findOrFail(decrypt($id));
         $title = $this->title;
-        $subTitle = 'Edit Location';
-        $customers = User::whereHas('roles', function ($query) {
-            $query->where('slug', 'customer');
-        })->pluck('name', 'id');
+        $subTitle = 'Edit Warehouse';
         $countries = Country::pluck('name', 'id');
-        return view($this->view . 'edit', compact('title', 'subTitle', 'location', 'customers', 'countries'));
+        return view($this->view . 'edit', compact('title', 'subTitle', 'warehouse', 'countries'));
     }
 
     public function update(Request $request, string $id)
     {
-        $location = Location::findOrFail(decrypt($id));
+        $warehouse = Warehouse::findOrFail(decrypt($id));
         $request->validate([
-            'customer_id' => 'required|exists:users,id',
-            'name' => 'required|string',
-            'code' => 'required|string|max:20|unique:locations,code',
+            'code' => 'required|string|max:20|unique:warehouses,code,' . $warehouse->id,
+            'name' => 'required|string|max:255',
             'address_line_1' => 'required|string|max:255',
             'address_line_2' => 'nullable|string|max:255',
             'country_id' => 'required|exists:countries,id',
@@ -183,25 +168,25 @@ class LocationController extends Controller
 
         try {
             $data = $request->only([
-                'name', 'code', 'customer_id', 'address_line_1', 'address_line_2', 'country_id', 
+                'code', 'name', 'address_line_1', 'address_line_2', 'country_id', 
                 'state_id', 'city_id', 'zipcode', 'email', 'contact_number', 
                 'fax', 'latitude', 'longitude'
             ]);
 
-            $location->update($data);
+            $warehouse->update($data);
 
             DB::commit();
-            return redirect()->route('locations.index')->with('success', 'Location updated successfully.');
+            return redirect()->route('warehouses.index')->with('success', 'Warehouse updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->route('locations.index')->with('error', 'Something Went Wrong.');
+            return redirect()->route('warehouses.index')->with('error', 'Something Went Wrong.');
         }
     }
 
     public function destroy(string $id)
     {
-        $location = Location::findOrFail($id);
-        $location->delete();
-        return response()->json(['success' => 'Location deleted successfully.']);
+        $warehouse = Warehouse::findOrFail($id);
+        $warehouse->delete();
+        return response()->json(['success' => 'Warehouse deleted successfully.']);
     }
 }
