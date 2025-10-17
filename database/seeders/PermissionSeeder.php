@@ -100,6 +100,35 @@ class PermissionSeeder extends Seeder
             [
                 'name' => 'Customers Delete',
                 'slug' => 'customers.destroy'
+            ],
+
+            [
+                'name' => 'Locations Listing',
+                'slug' => 'locations.index'
+            ],
+            [
+                'name' => 'Locations Add',
+                'slug' => 'locations.create'
+            ],
+            [
+                'name' => 'Locations Save',
+                'slug' => 'locations.store'
+            ],
+            [
+                'name' => 'Locations Edit',
+                'slug' => 'locations.edit'
+            ],
+            [
+                'name' => 'Locations Update',
+                'slug' => 'locations.update'
+            ],
+            [
+                'name' => 'Locations View',
+                'slug' => 'locations.show'
+            ],
+            [
+                'name' => 'Locations Delete',
+                'slug' => 'locations.destroy'
             ]
         ];
 

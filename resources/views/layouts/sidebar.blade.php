@@ -42,6 +42,14 @@
             </li>
             @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->can('locations.index'))
+            <li class="sidebar-item @if( request()->segment(1) == 'locations') active @endif">
+                <a href="{{ route('locations.index') }}" class="sidebar-link">
+                    <i class="align-middle me-2 fas fa-fw fa-map-marker-alt"></i> <span class="align-middle">Locations</span>
+                </a>
+            </li>
+            @endif
+
 
             <li class="sidebar-item @if(request()->segment(1) == 'gift-redemptions') active @endif">
                 <form action="{{ route('logout') }}" method="POST"> @csrf
