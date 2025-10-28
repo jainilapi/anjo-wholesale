@@ -13,13 +13,21 @@ return new class extends Migration
     {
         Schema::create('products', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('category_id')->constrained('categories')->cascadeOnDelete();
             $table->string('name');
-            $table->string('sku')->unique();
-            $table->longText('description')->nullable();
-            $table->json('images')->nullable();
+            $table->string('sku')->nullable();
+            $table->text('short_description')->nullable();
+            $table->longText('long_description')->nullable();
             $table->boolean('status')->default(true);
             $table->boolean('in_stock')->default(true);
+            $table->tinyInteger('type')->default(0)->comment('0 = Simple | 1 = Variable | 2 = Bundeled');
+            $table->boolean('should_feature_on_home_page')->default(0);
+            $table->boolean('is_new_product')->default(0);
+            $table->boolean('is_best_seller')->default(0);
+            $table->json('tags')->nullable();
+            $table->string('seo_title')->nullable();
+            $table->text('seo_description')->nullable();
+            $table->double('single_product_price')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
     }
