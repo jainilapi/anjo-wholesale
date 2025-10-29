@@ -13,6 +13,9 @@ return new class extends Migration
     {
         Schema::create('product_categories', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('product_id');
+            $table->unsignedBigInteger('category_id');
+            $table->boolean('is_primary')->default(0);
             $table->softDeletes();
             $table->timestamps();
         });
