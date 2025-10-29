@@ -18,6 +18,8 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('products', \App\Http\Controllers\ProductController::class);
     Route::resource('brands', \App\Http\Controllers\BrandController::class);
 
+    Route::any('product-management/{type?}/{step?}/{id?}', [\App\Http\Controllers\ProductController::class, 'steps'])->name('product-management');
+
     Route::post('state-list', [\App\Helpers\Helper::class, 'getStatesByCountry'])->name('state-list');
     Route::post('city-list', [\App\Helpers\Helper::class, 'getCitiesByState'])->name('city-list');
 

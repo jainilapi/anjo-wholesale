@@ -1,0 +1,5 @@
+| Product Type | Steps Included                                                           | Total Steps |
+| ------------ | ------------------------------------------------------------------------ | ----------- |
+| Simple       | Basics → Pack Sizes → Pricing → Inventory → Category → Review            | **6**       |
+| Variable     | Basics → Variants → Pack Sizes → Pricing → Inventory → Category → Review | **7**       |
+| Bundled      | Basics → Pack Sizes → Pricing → Inventory → Category → Review            | **6**       |

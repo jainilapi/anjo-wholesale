@@ -19,7 +19,7 @@ return new class extends Migration
             $table->longText('long_description')->nullable();
             $table->boolean('status')->default(true);
             $table->boolean('in_stock')->default(true);
-            $table->tinyInteger('type')->default(0)->comment('0 = Simple | 1 = Variable | 2 = Bundeled');
+            $table->enum('type', ['simple', 'variable', 'bundled'])->default('simple');
             $table->boolean('should_feature_on_home_page')->default(0);
             $table->boolean('is_new_product')->default(0);
             $table->boolean('is_best_seller')->default(0);

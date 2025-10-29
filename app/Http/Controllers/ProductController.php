@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\Helper;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Category;
@@ -21,6 +22,7 @@ class ProductController extends Controller
         $this->middleware('permission:products.update')->only(['update']);
         $this->middleware('permission:products.show')->only(['show']);
         $this->middleware('permission:products.destroy')->only(['destroy']);
+        $this->middleware('permission:product-management')->only(['steps']);
     }
 
     public function index()
@@ -36,18 +38,12 @@ class ProductController extends Controller
 
     public function ajax()
     {
-        $query = Product::with(['category', 'brands']);
+        $query = Product::query();
 
         return datatables()
         ->eloquent($query)
         ->addColumn('category_name', function ($row) {
-            return $row->category?->name ?? '—';
-        })
-        ->addColumn('brands', function ($row) {
-            if ($row->brands->isEmpty()) return '—';
-            return $row->brands->map(function($b){
-                return '<span class="badge bg-light text-dark">'.e($b->name).'</span>';
-            })->implode(' ');
+            return $row->primaryCategory?->name ?? '—';
         })
         ->addColumn('status_badge', function ($row) {
             return $row->status ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>';
@@ -58,17 +54,23 @@ class ProductController extends Controller
         ->addColumn('action', function ($row) {
             $html = '';
             if (auth()?->user()?->isAdmin() || auth()->user()->can('products.edit')) {
-                $html .= '<a href="' . route('products.edit', encrypt($row->id)) . '" class="btn btn-sm btn-primary"> <i class="fa fa-edit"> </i> </a>&nbsp;';
+                $html .= '<a href="' . route('product-management', ['type' => encrypt($row->type), 'step' => encrypt(1), 'id' => encrypt($row->id)]) . '" class="btn btn-sm btn-primary"> <i class="fa fa-edit"> </i> </a>&nbsp;';
             }
-            if (auth()?->user()?->isAdmin() || auth()->user()->can('products.destroy')) {
-                $html .= '<button type="button" class="btn btn-sm btn-danger" id="deleteRow" data-row-route="' . route('products.destroy', $row->id) . '"> <i class="fa fa-trash"> </i> </button>&nbsp;';
-            }
-            if (auth()?->user()?->isAdmin() || auth()->user()->can('products.show')) {
-                $html .= '<a href="' . route('products.show', encrypt($row->id)) . '" class="btn btn-sm btn-secondary"> <i class="fa fa-eye"> </i> </a>';
-            }
+
             return $html;
         })
-        ->rawColumns(['action', 'status_badge', 'stock_badge', 'brands'])
+        ->editColumn('type', function ($row) {
+            if ($row->type == 'simple') {
+                return "Simple";
+            } else if ($row->type == 'variable') {
+                return "Variable";
+            } else if ($row->type == 'bundled') {
+                return "Bundled";
+            } else {
+                return "Unknown";
+            }
+        })
+        ->rawColumns(['action', 'status_badge', 'stock_badge', 'type'])
         ->addIndexColumn()
         ->toJson();
     }
@@ -76,143 +78,70 @@ class ProductController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function steps(Request $request, $type = null, $step = null, $id = null)
     {
-        $title = $this->title;
-        $subTitle = 'Add New Product';
-        $categories = Category::pluck('name', 'id');
-        $brands = \App\Models\Brand::where('status', 1)->orderBy('name')->pluck('name', 'id');
-        return view($this->view . 'create', compact('title', 'subTitle', 'categories', 'brands'));
-    }
+        $notFoundMessage = 'You are lost';
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'name' => 'required|string|max:255',
-            'sku' => 'required|string|max:100|unique:products,sku',
-            'description' => 'nullable|string',
-            'images' => 'nullable|array',
-            'images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'status' => 'nullable|boolean',
-            'in_stock' => 'nullable|boolean',
-            'brands' => 'nullable|array',
-            'brands.*' => 'nullable|exists:brands,id'
-        ]);
+        if (empty($type) || empty($step) || !Helper::isValidEncryption($type) || !Helper::isValidEncryption($step)) {
+            abort(404, $notFoundMessage);
+        }
 
-        DB::beginTransaction();
-        try {
-            $uploadedImages = [];
-            if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $image) {
-                    $path = $image->store('products', 'public');
-                    $uploadedImages[] = $path;
-                }
+        $type = decrypt($type);
+
+        if (!in_array($type, ['simple', 'variable', 'bundled'])) {
+            abort(404, $notFoundMessage);
+        }
+
+        $step = decrypt($step);
+
+        if ($type == 'simple' && !($step >= 1 && $step <= 6)) {
+            abort(404, $notFoundMessage);
+        }
+
+        if ($type == 'variable' && !($step >= 1 && $step <= 7)) {
+            abort(404, $notFoundMessage);
+        }
+
+        if ($type == 'bundled' && !($step >= 1 && $step <= 7)) {
+            abort(404, $notFoundMessage);
+        }
+
+        if (empty($id)) {
+            $product = Product::create([
+                'name' => 'Untitled Product'
+            ]);
+
+            return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt($step), 'id' => encrypt($product->id)]);
+        }
+
+        $product = Product::find($id);
+
+        if ($request->method() == 'GET') {
+            return view("products/{$type}/step-{$step}", compact('product'));
+        } else {
+            if ($type == 'simple') {
+                return $this->simple($request, $step, $id);
             }
 
-            $data = [
-                'category_id' => $request->input('category_id'),
-                'name' => $request->string('name'),
-                'sku' => $request->string('sku'),
-                'description' => $request->input('description'),
-                'images' => $uploadedImages,
-                'status' => (bool) $request->input('status', true),
-                'in_stock' => (bool) $request->input('in_stock', true),
-            ];
+            if ($type == 'variable') {
+                return $this->variable($request, $step, $id);
+            }
 
-            $product = Product::create($data);
-            $product->brands()->sync($request->input('brands', []));
-            DB::commit();
-            return redirect()->route('products.index')->with('success', 'Product created successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->route('products.index')->with('error', 'Something Went Wrong.');
+            if ($type == 'bundled') {
+                return $this->bundled($request, $step, $id);
+            }
         }
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        $product = Product::with('category')->findOrFail(decrypt($id));
-        $title = $this->title;
-        $subTitle = 'Product Details';
-        return view($this->view . 'view', compact('title', 'subTitle', 'product'));
+    public function simple($request, $step, $id) {
+        
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        $product = Product::findOrFail(decrypt($id));
-        $title = $this->title;
-        $subTitle = 'Edit Product';
-        $categories = Category::pluck('name', 'id');
-        $brands = \App\Models\Brand::where('status', 1)->orderBy('name')->pluck('name', 'id');
-        return view($this->view . 'edit', compact('title', 'subTitle', 'product', 'categories', 'brands'));
+    public function variable($request, $step, $id) {
+
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        $product = Product::findOrFail(decrypt($id));
-        $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'name' => 'required|string|max:255',
-            'sku' => 'required|string|max:100|unique:products,sku,' . $product->id,
-            'description' => 'nullable|string',
-            'images' => 'nullable|array',
-            'images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'status' => 'nullable|boolean',
-            'in_stock' => 'nullable|boolean',
-            'brands' => 'nullable|array',
-            'brands.*' => 'nullable|exists:brands,id'
-        ]);
-
-        DB::beginTransaction();
-        try {
-            $uploadedImages = $product->images ?? [];
-            if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $image) {
-                    $path = $image->store('products', 'public');
-                    $uploadedImages[] = $path;
-                }
-            }
-
-            $data = [
-                'category_id' => $request->input('category_id'),
-                'name' => $request->string('name'),
-                'sku' => $request->string('sku'),
-                'description' => $request->input('description'),
-                'images' => $uploadedImages,
-                'status' => (bool) $request->input('status', false),
-                'in_stock' => (bool) $request->input('in_stock', false),
-            ];
-
-            $product->update($data);
-            $product->brands()->sync($request->input('brands', []));
-            DB::commit();
-            return redirect()->route('products.index')->with('success', 'Product updated successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->route('products.index')->with('error', 'Something Went Wrong.');
-        }
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        $product = Product::findOrFail($id);
-        $product->delete();
-        return response()->json(['success' => 'Product deleted successfully.']);
+    public function bundled($request, $step, $id) {
+        
     }
 }

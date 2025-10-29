@@ -16,4 +16,8 @@ class Product extends Model
         'status' => 'boolean',
         'in_stock' => 'boolean'
     ];
+
+    public function primaryCategory() {
+        return $this->hasOne(ProductCategory::class, 'product_id')->where('is_primary', 1);
+    }
 }

@@ -5,7 +5,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <a href="{{ route('products.create') }}" class="btn btn-primary float-end">
+                <a href="{{ route('product-management', ['type' => encrypt('simple'), 'step' => encrypt(1)]) }}" class="btn btn-primary float-end">
                     <i class="fa fa-plus"></i> Add New Product
                 </a>
             </div>
@@ -16,10 +16,10 @@
                             <th>#</th>
                             <th>Name</th>
                             <th>SKU</th>
+                            <th>Type</th>
                             <th>Category</th>
                             <th>Status</th>
                             <th>Stock</th>
-                            <th>Brands</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -44,10 +44,10 @@ $(document).ready(function () {
             { data: 'DT_RowIndex', orderable: false, searchable: false },
             { data: 'name' },
             { data: 'sku' },
+            { data: 'type' },
             { data: 'category_name' },
             { data: 'status_badge', orderable: false, searchable: false },
             { data: 'stock_badge', orderable: false, searchable: false },
-            { data: 'brands', orderable: false, searchable: false },
             { data: 'action', orderable: false, searchable: false }
         ],
     });

@@ -112,4 +112,13 @@ class Helper {
         $dialCode = trim(str_replace('+', '', $dialCode));
         return strtolower(Country::select('iso2')->where('phonecode', "+{$dialCode}")->orWhere('phonecode', $dialCode)->first()->iso2 ?? 'in');
     }
+
+    public static function isValidEncryption($value) {
+        try {
+            \Illuminate\Support\Facades\Crypt::decryptString($value);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
 }
