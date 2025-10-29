@@ -20,4 +20,8 @@ class Product extends Model
     public function primaryCategory() {
         return $this->hasOne(ProductCategory::class, 'product_id')->where('is_primary', 1);
     }
+
+    public function primaryBrand() {
+        return $this->hasOne(BrandProduct::class, 'product_id');
+    }
 }

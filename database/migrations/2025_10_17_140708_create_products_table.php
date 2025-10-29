@@ -27,6 +27,7 @@ return new class extends Migration
             $table->string('seo_title')->nullable();
             $table->text('seo_description')->nullable();
             $table->double('single_product_price')->nullable();
+            $table->boolean('in_draft')->default(1);
             $table->softDeletes();
             $table->timestamps();
         });

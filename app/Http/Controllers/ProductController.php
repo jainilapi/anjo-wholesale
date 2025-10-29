@@ -7,6 +7,9 @@ use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Support\Facades\DB;
+use App\Models\ProductImage;
+use App\Models\BrandProduct;
+use App\Models\Brand;
 
 class ProductController extends Controller
 {
@@ -114,6 +117,7 @@ class ProductController extends Controller
             return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt($step), 'id' => encrypt($product->id)]);
         }
 
+        $id = decrypt($id);
         $product = Product::find($id);
 
         if ($request->method() == 'GET') {
@@ -134,7 +138,88 @@ class ProductController extends Controller
     }
 
     public function simple($request, $step, $id) {
-        
+        switch ($step) {
+            case 1:
+                $request->validate([
+                    'name' => 'required|string|max:255',
+                    'brand_id' => 'required|integer|exists:brands,id',
+                    'short_description' => 'required|string',
+                    'long_description' => 'required|string',
+                    'status' => 'nullable|boolean',
+                    'primary_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+                    'secondary_images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+                ]);
+
+                DB::beginTransaction();
+                try {
+                    $product = Product::findOrFail($id);
+
+                    $product->update([
+                        'name' => $request->string('name'),
+                        'short_description' => $request->input('short_description'),
+                        'long_description' => $request->input('long_description'),
+                        'status' => (bool) $request->input('status', false),
+                        'type' => 'simple',
+                        'in_draft' => 0,
+                    ]);
+
+                    BrandProduct::withTrashed()->where('product_id', $product->id)->delete();
+                    BrandProduct::create([
+                        'brand_id' => (int) $request->brand_id,
+                        'product_id' => $product->id,
+                    ]);
+
+                    if ($request->hasFile('primary_image')) {
+                        ProductImage::where('product_id', $product->id)->where('is_primary', 1)->delete();
+                        $file = $request->file('primary_image')->store('products', 'public');
+                        ProductImage::create([
+                            'product_id' => $product->id,
+                            'is_primary' => 1,
+                            'file' => $file,
+                        ]);
+                    }
+
+                    if ($request->hasFile('secondary_images')) {
+                        foreach ($request->file('secondary_images') as $img) {
+                            $path = $img->store('products', 'public');
+                            ProductImage::create([
+                                'product_id' => $product->id,
+                                'is_primary' => 0,
+                                'file' => $path,
+                            ]);
+                        }
+                    }
+
+                    DB::commit();
+                    return redirect()->route('product-management', ['type' => encrypt('simple'), 'step' => encrypt(2), 'id' => encrypt($product->id)])
+                        ->with('success', 'Product details saved');
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    dd($e->getMessage());
+                    return back()->withInput()->with('error', 'Something went wrong');
+                }
+            case 2:
+
+                break;
+            case 3:
+
+                break;
+            case 4:
+
+                break;
+            case 5:
+
+                break;
+            case 6:
+
+                break;
+            case 7:
+
+                break;
+            default:
+                abort(404);
+                break;
+        }
     }
 
     public function variable($request, $step, $id) {

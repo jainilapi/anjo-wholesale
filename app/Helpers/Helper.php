@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Country;
 use App\Models\State;
 use App\Models\City;
+use App\Models\Brand;
 
 class Helper {
     
@@ -120,5 +121,36 @@ class Helper {
         } catch (\Exception $e) {
             return false;
         }
+    }
+
+    public function getBrands(Request $request)
+    {
+        $queryString = trim($request->searchQuery);
+        $page = $request->input('page', 1);
+        $limit = 10;
+
+        $query = Brand::query()->where('status', 1);
+
+        if (!empty($queryString)) {
+            $query->where(function($q) use ($queryString) {
+                $q->where('name', 'LIKE', "%{$queryString}%")
+                  ->orWhere('slug', 'LIKE', "%{$queryString}%");
+            });
+        }
+
+        $data = $query->paginate($limit, ['*'], 'page', $page);
+        $response = $data->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'text' => $item->name
+            ];
+        });
+
+        return response()->json([
+            'items' => $response->reverse()->values(),
+            'pagination' => [
+                'more' => $data->hasMorePages()
+            ]
+        ]);
     }
 }
