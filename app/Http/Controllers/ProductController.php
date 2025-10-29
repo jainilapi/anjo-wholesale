@@ -195,7 +195,6 @@ class ProductController extends Controller
                         ->with('success', 'Product details saved');
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    dd($e->getMessage());
                     return back()->withInput()->with('error', 'Something went wrong');
                 }
             case 2:
@@ -228,5 +227,24 @@ class ProductController extends Controller
 
     public function bundled($request, $step, $id) {
         
+    }
+
+    public function deleteImage(Request $request)
+    {
+        $request->validate([
+            'image_id' => 'required|integer|exists:product_images,id',
+            'product_id' => 'required|integer|exists:products,id',
+        ]);
+
+        $image = ProductImage::where('id', $request->image_id)
+            ->where('product_id', $request->product_id)
+            ->firstOrFail();
+
+        if ((int) $image->is_primary === 1) {
+            return response()->json(['message' => 'Cannot delete primary image'], 422);
+        }
+
+        $image->delete();
+        return response()->json(['success' => true]);
     }
 }

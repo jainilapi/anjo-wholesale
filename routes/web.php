@@ -23,6 +23,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('state-list', [\App\Helpers\Helper::class, 'getStatesByCountry'])->name('state-list');
     Route::post('city-list', [\App\Helpers\Helper::class, 'getCitiesByState'])->name('city-list');
     Route::post('brand-list', [\App\Helpers\Helper::class, 'getBrands'])->name('brand-list');
+    Route::post('product-image-delete', [\App\Http\Controllers\ProductController::class, 'deleteImage'])->name('product-image-delete');
 
     Route::get('settings', [App\Http\Controllers\SettingController::class, 'index'])->name('settings.index');
     Route::post('settings', [App\Http\Controllers\SettingController::class, 'update'])->name('settings.update');    

@@ -24,4 +24,19 @@ class Product extends Model
     public function primaryBrand() {
         return $this->hasOne(BrandProduct::class, 'product_id');
     }
+
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class, 'product_id');
+    }
+
+    public function primaryImage()
+    {
+        return $this->hasOne(ProductImage::class, 'product_id')->where('is_primary', 1);
+    }
+
+    public function brands()
+    {
+        return $this->belongsToMany(Brand::class, 'brand_product', 'product_id', 'brand_id');
+    }
 }

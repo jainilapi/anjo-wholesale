@@ -17,8 +17,9 @@
                     <div class="mb-3">
                         <label class="form-label">Brand *</label>
                         <select name="brand_id" id="brandSelect" class="form-select" data-placeholder="Select brand" required>
-                            @if(isset($product->primaryBrand->product->id))
-                                <option value="{{ $product->primaryBrand->product->id }}" selected> {{ $product->primaryBrand->product->name }} </option>
+                            @php($selectedBrand = optional($product->brands->first())->id)
+                            @if($selectedBrand)
+                                <option value="{{ $selectedBrand }}" selected>{{ optional($product->brands->first())->name }}</option>
                             @endif
                         </select>
                         @error('brand_id')<div class="text-danger small">{{ $message }}</div>@enderror
@@ -74,8 +75,9 @@
                     <label class="form-label">Main Product Image *</label>
                     <input type="file" name="primary_image" id="primaryImage" class="form-control" accept="image/png,image/jpeg,image/webp" {{ $product->exists ? '' : 'required' }}>
                     @error('primary_image')<div class="text-danger small">{{ $message }}</div>@enderror
-                    <div class="mt-3" id="primaryPreview" style="display:none">
-                        <img src="#" alt="Preview" class="img-fluid rounded border" id="primaryPreviewImg" style="object-fit:cover;max-height:220px;width:100%">
+                    @php($existingPrimary = $product->primaryImage)
+                    <div class="mt-3" id="primaryPreview" style="{{ $existingPrimary ? '' : 'display:none' }}">
+                        <img src="{{ $existingPrimary ? asset('storage/'.$existingPrimary->file) : '#' }}" alt="Preview" class="img-fluid rounded border" id="primaryPreviewImg" style="object-fit:cover;max-height:220px;width:100%">
                     </div>
                 </div>
             </div>
@@ -89,7 +91,14 @@
                     <input type="file" name="secondary_images[]" id="secondaryImages" class="form-control" accept="image/png,image/jpeg,image/webp" multiple>
                     @error('secondary_images')<div class="text-danger small">{{ $message }}</div>@enderror
                     <div class="mt-3">
-                        <div id="secondaryGallery" class="d-flex flex-wrap gap-2" style="min-height:60px"></div>
+                        <div id="secondaryGallery" class="d-flex flex-wrap gap-2" style="min-height:60px">
+                            @foreach(($product->images()->where('is_primary',0)->get() ?? []) as $img)
+                                <div class="position-relative border rounded existing-image" data-image-id="{{ $img->id }}" style="width:90px;height:90px" draggable="true">
+                                    <img src="{{ asset('storage/'.$img->file) }}" class="w-100 h-100 rounded" style="object-fit:cover">
+                                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 translate-middle rounded-circle remove-existing" style="width:20px;height:20px">&times;</button>
+                                </div>
+                            @endforeach
+                        </div>
                         <small class="text-muted">Drag to reorder. Click × to remove.</small>
                     </div>
                 </div>
@@ -206,6 +215,24 @@ document.addEventListener('DOMContentLoaded', function() {
             gallery.appendChild(wrap);
         });
     }
+
+    document.querySelectorAll('#secondaryGallery .existing-image .remove-existing').forEach(btn => {
+        btn.addEventListener('click', function(){
+            const parent = this.closest('.existing-image');
+            const imageId = parent.getAttribute('data-image-id');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title: 'Remove image?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, remove' }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.post({
+                            url: '{{ route('product-image-delete') }}',
+                            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                            data: { image_id: imageId, product_id: '{{ $product->id }}' }
+                        }).done(() => { parent.remove(); }).fail(() => { Swal.fire('Error', 'Could not delete image', 'error'); });
+                    }
+                });
+            }
+        });
+    });
 
     secondaryInput.addEventListener('change', function(){
         items = [];
