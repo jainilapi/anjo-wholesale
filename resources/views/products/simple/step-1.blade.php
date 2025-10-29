@@ -1,9 +1,5 @@
-@extends('layouts.app', ['title' => 'Product Management', 'subTitle' => 'Enter the information for your product', 'select2' => true, 'editor' => true])
-
-@section('content')
-<form action="{{ route('product-management', ['type' => encrypt('simple'), 'step' => encrypt(1), 'id' => encrypt($product->id)]) }}" method="POST" enctype="multipart/form-data" id="productStep1Form">
-    @csrf
-
+@extends('products.layout', ['step' => $step, 'type' => $type, 'product' => $product])
+@section('product-content')
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="card">
@@ -76,9 +72,15 @@
                     <input type="file" name="primary_image" id="primaryImage" class="form-control" accept="image/png,image/jpeg,image/webp" {{ $product->exists ? '' : 'required' }}>
                     @error('primary_image')<div class="text-danger small">{{ $message }}</div>@enderror
                     @php($existingPrimary = $product->primaryImage)
-                    <div class="mt-3" id="primaryPreview" style="{{ $existingPrimary ? '' : 'display:none' }}">
+                    @if($existingPrimary)
+                    <div class="mt-3" id="primaryPreview">
                         <img src="{{ $existingPrimary ? asset('storage/'.$existingPrimary->file) : '#' }}" alt="Preview" class="img-fluid rounded border" id="primaryPreviewImg" style="object-fit:cover;max-height:220px;width:100%">
                     </div>
+                    @else
+                    <div class="mt-3" id="primaryPreview" style="display:none">
+                        <img src="#" alt="Preview" class="img-fluid rounded border" id="primaryPreviewImg" style="object-fit:cover;max-height:220px;width:100%">
+                    </div>
+                    @endif
                 </div>
             </div>
 
@@ -105,13 +107,9 @@
             </div>
         </div>
     </div>
+@endsection
 
-    <div class="mt-4 d-flex justify-content-end">
-        <button type="submit" class="btn btn-primary">Save & Continue</button>
-    </div>
-</form>
-
-@push('js')
+@push('product-js')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const urls = {
@@ -216,6 +214,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    const deletedContainer = document.createElement('div');
+    deletedContainer.id = 'deletedImagesContainer';
+    document.getElementById('productStep1Form').appendChild(deletedContainer);
+
     document.querySelectorAll('#secondaryGallery .existing-image .remove-existing').forEach(btn => {
         btn.addEventListener('click', function(){
             const parent = this.closest('.existing-image');
@@ -223,11 +225,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({ title: 'Remove image?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, remove' }).then((result) => {
                     if (result.isConfirmed) {
-                        $.post({
-                            url: '{{ route('product-image-delete') }}',
-                            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                            data: { image_id: imageId, product_id: '{{ $product->id }}' }
-                        }).done(() => { parent.remove(); }).fail(() => { Swal.fire('Error', 'Could not delete image', 'error'); });
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'deleted_image_ids[]';
+                        input.value = imageId;
+                        deletedContainer.appendChild(input);
+                        parent.remove();
                     }
                 });
             }
@@ -244,11 +247,25 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     clearBtn.addEventListener('click', function(){
-        items = [];
-        gallery.innerHTML = '';
-        secondaryInput.value = '';
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ title: 'Clear all images?', text: 'This will remove all selected and existing secondary images', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, clear' }).then((result) => {
+                if (result.isConfirmed) {
+                    items = [];
+                    gallery.querySelectorAll('.existing-image').forEach(el => {
+                        const imageId = el.getAttribute('data-image-id');
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'deleted_image_ids[]';
+                        input.value = imageId;
+                        deletedContainer.appendChild(input);
+                        el.remove();
+                    });
+                    gallery.innerHTML = '';
+                    secondaryInput.value = '';
+                }
+            });
+        }
     });
 });
 </script>
 @endpush
-@endsection

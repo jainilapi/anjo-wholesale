@@ -121,7 +121,7 @@ class ProductController extends Controller
         $product = Product::find($id);
 
         if ($request->method() == 'GET') {
-            return view("products/{$type}/step-{$step}", compact('product'));
+            return view("products/{$type}/step-{$step}", compact('product', 'step', 'type'));
         } else {
             if ($type == 'simple') {
                 return $this->simple($request, $step, $id);

@@ -18,6 +18,7 @@
 
     <link href="{{ asset('assets/css/font-awesome.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/css/style-dark.min.css') }}?time={{ time() }}" rel="stylesheet">
+	<link href="{{ asset('assets/css/custom.css') }}?time={{ time() }}" rel="stylesheet">
 
 	@if(isset($datatable))
 		<link rel="stylesheet" href="{{ asset('assets/css/datatable.min.css') }}">
