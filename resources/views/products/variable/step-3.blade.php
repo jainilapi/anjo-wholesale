@@ -36,7 +36,6 @@
     return units
       .filter(u => u.parent_id === parentId)
       .map(u => {
-        console.log(u, unitsMap, baseLabel);
         
         const chainText = computeChainText(u, unitsMap, baseLabel);
         const hasChild = units.some(x => x.parent_id === u.id);
