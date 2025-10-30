@@ -23,6 +23,7 @@ class UnitSeeder extends Seeder
             ['title' => 'Carton', 'text' => 'Packaging unit for milk, juice, or boxed items.'],
             ['title' => 'Case', 'text' => 'Bulk shipping unit typically containing multiple packs or bottles.'],
             ['title' => 'Piece', 'text' => 'Individual unit, often used for single items or bakery goods.'],
+            ['title' => 'Pallet', 'text' => 'Pallet.'],
         ];
 
         DB::table('units')->insert($units);

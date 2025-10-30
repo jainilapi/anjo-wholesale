@@ -1,227 +1,230 @@
 @extends('products.layout', ['step' => $step, 'type' => $type, 'product' => $product])
+
 @section('product-content')
-<div id="variantUnitsContainer" class="d-flex flex-column gap-3"></div>
-
-<!-- <div class="card mt-3">
-    <div class="card-body d-flex justify-content-between align-items-center">
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="applyAllCheck">
-            <label class="form-check-label" for="applyAllCheck">Apply same unit hierarchy to all variants</label>
-        </div>
-        <button type="button" class="btn btn-outline-secondary" id="applyAllBtn">Apply to All</button>
-    </div>
-</div> -->
-
+<div id="unitAccordion"></div>
 @endsection
 
 @push('product-js')
 <script>
-$(function(){
-    const stepUrl = "{{ route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(3), 'id' => encrypt($product->id)]) }}";
+(() => {
+  const csrf = '{{ csrf_token() }}';
+  const unitStepUrl = "{{ route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(3), 'id' => encrypt($product->id)]) }}";
 
-    function unitSelect($el){
-        $el.select2({ theme:'bootstrap4', placeholder:'Select unit', allowClear:true, ajax:{ url: stepUrl, type:'POST', dataType:'json', delay:250, headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'}, data: params => ({ op:'unit-list', searchQuery: params.term, page: params.page||1 }), processResults: data => ({ results: data.items, pagination:{ more: data.pagination.more } }) } });
-        return $el;
+  /** ==============================
+   *  Utility Functions
+   * ============================== */
+  const post = (data) => $.post(unitStepUrl, { _token: csrf, ...data });
+  const icon = (cls) => `<i class="fa ${cls}"></i>`;
+
+  function computeChainText(unit, unitsMap, baseLabel) {
+    const parts = [`1 ${unit.unit.label}`];
+    let multiplier = 1, cursor = unit;
+    while (cursor.parent_id && unitsMap[cursor.parent_id]) {
+      const parent = unitsMap[cursor.parent_id];
+      multiplier *= (cursor.qty || 1);
+      parts.push(`= ${cursor.qty || 1} ${parent.unit.label}`);
+      cursor = parent;
     }
+    parts.push(`= ${multiplier} ${baseLabel}`);
+    return parts.join(' ');
+  }
 
-    function renderItems(items){
-        const $c = $('#variantUnitsContainer');
-        $c.empty();
-        items.forEach(function(v){
+  /** ==============================
+   *  Rendering Logic
+   * ============================== */
+  function renderUnitTree(units, parentId = null, parentName = '', depth = 0, unitsMap = {}, variantId = null, baseLabel='') {
+    return units
+      .filter(u => u.parent_id === parentId)
+      .map(u => {
+        console.log(u, unitsMap, baseLabel);
+        
+        const chainText = computeChainText(u, unitsMap, baseLabel);
+        const hasChild = units.some(x => x.parent_id === u.id);
+        const indent = depth * 25;
 
-        let fLetter = (v && typeof v.name === 'string') ? v.name : 'Variant';
-        fLetter = (typeof fLetter === 'string' && fLetter.length > 0) ? fLetter[0] : '';
-
-
-        const $card = $(`
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-light text-dark">${fLetter}</span>
-                        <strong>${v.name || 'Variant'}</strong>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-link" data-bs-toggle="collapse" data-bs-target="#col_${v.id}">
-                        <i class="fa fa-chevron-down"></i>
-                    </button>
+        return `
+          <div class="card mb-2" style="margin-left:${indent}px">
+            <div class="card-body py-2">
+              <div class="row align-items-center">
+                <div class="col-md-4">
+                  <span class="badge bg-secondary">${u.unit.label}</span>
                 </div>
-                <div id="col_${v.id}" class="collapse show">
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <div class="text-muted small">Base Unit</div>
-                                </div>
-                                <div class="text-muted small">
-                                    Default Selling Unit
-                                    <div class="form-check form-switch d-inline-block ms-1">
-                                        <input 
-                                            disabled 
-                                            class="form-check-input" 
-                                            type="checkbox" 
-                                            ${v.additional_units?.find(a => a.is_default) ? 'checked' : ''}>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center mt-2">
-                                <div class="me-2" style="width:260px">
-                                    <select class="form-select form-select-sm base-unit" data-id="${v.id}"></select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mb-2">
-                            <div class="text-muted small">Additional Units</div>
-                        </div>
-                        <div class="additional-wrap" data-id="${v.id}"></div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary mt-2 add-unit" data-id="${v.id}">
-                            + Add Unit
-                        </button>
-                    </div>
+                <div class="col-md-3">
+                  <input class="form-control form-control-sm qty-input" 
+                         data-id="${u.id}" type="number" min="1" 
+                         value="${u.qty}" placeholder="Quantity">
                 </div>
+                <div class="col-md-3 small text-muted">Per ${parentName}</div>
+                <div class="col-md-2 text-end d-flex align-items-center justify-content-end gap-3">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input default-toggle" 
+                           data-id="${u.id}" data-variant="${variantId}" 
+                           type="checkbox" ${u.is_default ? 'checked' : ''}>
+                  </div>
+                  <button type="button" class="btn btn-link text-danger p-0 unit-delete" data-id="${u.id}">
+                    ${icon('fa-trash')}
+                  </button>
+                </div>
+              </div>
+              <div class="mt-2 small text-muted">${chainText}</div>
+              <div class="ms-2 mt-2">
+                ${!hasChild ? `<button type="button" class="btn btn-outline-secondary btn-sm add-unit" 
+                               data-parent="${u.id}" data-variant="${variantId}">
+                               + Add Unit</button>` : ''}
+              </div>
+              ${renderUnitTree(units, u.id, u.unit.label, depth + 1, unitsMap, variantId, baseLabel)}
             </div>
-        `);
+          </div>`;
+      }).join('');
+  }
 
-            const $select = unitSelect($card.find('select.base-unit'));
-            if (v.base_unit) {
-                const op = new Option(v.base_unit.title, v.base_unit.id, true, true); $select.append(op).trigger('change');
-            }
-            $select.on('select2:select', function(e){
-                const unitId = e.params.data.id; const varId = $(this).data('id');
-                $.post(stepUrl, { _token:'{{ csrf_token() }}', op:'set-base', varient_id: varId, unit_id: unitId });
-            });
-            $select.on('select2:clear', function(){ const varId = $(this).data('id'); $.post(stepUrl, { _token:'{{ csrf_token() }}', op:'set-base', varient_id: varId, unit_id: '' }); });
+  function renderVariantCard(v) {
+    const unitsMap = Object.fromEntries((v.additional_units || []).map(x => [x.id, x]));
+    return `
+      <div class="card mb-4">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+          <strong>${v.name}</strong>
+          <button type="button" class="btn btn-sm btn-link" data-bs-toggle="collapse" data-bs-target="#var_${v.id}">
+            ${icon('fa-chevron-down')}
+          </button>
+        </div>
+        <div id="var_${v.id}" class="collapse show">
+          <div class="card-body">
+            <div class="mb-3">
+              <div class="small text-muted mb-1">Base Unit</div>
+              <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm base-unit-select" data-variant="${v.id}"></select>
+                <span class="small text-muted">Base selling unit</span>
+              </div>
+            </div>
+            <hr/>
+            <div>
+              <div class="small text-muted mb-2">Additional Units</div>
+              ${renderUnitTree(v.additional_units || [], null, v.base_unit?.label || '', 0, unitsMap, v.id, v.base_unit?.label || '')}
+              <button type="button" class="btn btn-outline-secondary btn-sm add-unit" data-parent="" data-variant="${v.id}">+ Add Unit</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
 
-            const $wrap = $card.find('.additional-wrap');
-            function addRow(row){
-                const $r = $('<div class="border rounded p-3 mb-2" style="margin-left:0">\
-                    <div class="row g-2 align-items-center">\
-                        <div class="col-md-4">\
-                            <div class="d-flex align-items-center">\
-                                <span class="me-2" style="width:14px;height:14px;border-radius:50%;background:#888;display:inline-block"></span>\
-                                <select class="form-select form-select-sm unit-select"></select>\
-                            </div>\
-                            <div class="text-muted small mt-1 conv-label"></div>\
-                        </div>\
-                        <div class="col-md-3"><input type="number" min="1" class="form-control form-control-sm qty" value="'+(row&&row.qty?row.qty: (row?1:12))+'"></div>\
-                        <div class="col-md-3"><select class="form-select form-select-sm parent-select"><option value="">Per Base Unit</option></select></div>\
-                        <div class="col-md-2 d-flex align-items-center justify-content-end">\
-                            <div class="form-check form-switch me-2"><input class="form-check-input default-switch" type="checkbox" '+(row&&row.is_default?'checked':'')+'></div>\
-                            <button type="button" class="btn btn-sm btn-outline-danger remove"><i class="fa fa-trash"></i></button>\
-                        </div>\
-                    </div>\
-                </div>');
-                if (row && row.id) { $r.attr('data-row-id', row.id); $r.data('row-id', row.id); }
-                if (row && row.parent_id) { $r.attr('data-desired-parent', row.parent_id); $r.data('desired-parent', row.parent_id); }
+  function loadVariantsAndUnits() {
+    post({ op: 'fetch-variants-units-tree' }).done(res => {
+      const html = res.variants.map(renderVariantCard).join('');
+      $('#unitAccordion').html(html);
+      initBaseSelects(res.variants);
+    });
+  }
 
-                const $uSel = unitSelect($r.find('select.unit-select'));
-                if (row && row.unit) { const op = new Option(row.unit.title, row.unit.id, true, true); $uSel.append(op).trigger('change'); }
-                const $parentSel = $r.find('select.parent-select');
-                function populateParents(){
-                    $parentSel.html('<option value="">Per Base Unit</option>');
-                    $wrap.find('.border').each(function(){ const lbl = $(this).find('select.unit-select option:selected').text(); const id = $(this).data('row-id'); if(id && id !== $r.data('row-id')) { $parentSel.append(new Option(lbl, id)); } });
-                    const desired = $r.data('desired-parent'); if (desired) { $parentSel.val(desired); }
-                }
-                populateParents();
+  /** ==============================
+   *  Select2 & Modal Handling
+   * ============================== */
+  function initBaseSelects(variants) {
+    $('.base-unit-select').each(function () {
+      const variantId = $(this).data('variant');
+      const current = variants.find(v => v.id === variantId)?.base_unit || null;
+      $(this).select2({
+        theme: 'bootstrap4',
+        ajax: {
+          url: unitStepUrl,
+          type: 'POST',
+          dataType: 'json',
+          delay: 250,
+          headers: { 'X-CSRF-TOKEN': csrf },
+          data: params => ({ op: 'unit-list', searchQuery: params.term, page: params.page || 1 }),
+          processResults: data => ({ results: data.items, pagination: { more: data.pagination.more } })
+        }
+      });
+      if (current) {
+        const option = new Option(current.label, current.id, true, true);
+        $(this).append(option).trigger('change');
+      }
+    });
+  }
 
-                function hasChild(parentId){ let found=false; $wrap.find('.border').each(function(){ if($(this).find('.parent-select').val()==parentId) found=true; }); return found; }
+  /** ==============================
+   *  Event Bindings
+   * ============================== */
+  $(document)
+    .on('select2:select', '.base-unit-select', function (e) {
+      const variantId = $(this).data('variant');
+      const unitId = e.params.data.id;
+      post({ op: 'set-base', variant_id: variantId, unit_id: unitId }).done(() => loadVariantsAndUnits());
+    })
+    .on('click', '.add-unit', function () {
+      const variantId = $(this).data('variant');
+      const parentId = $(this).data('parent') || null;
 
-                function indentation(){
-                    let indent = 0; let curParent = $parentSel.val();
-                    while(curParent){ const $p = $wrap.find('.border[data-row-id="'+curParent+'"]'); if(!$p.length) break; indent += 20; curParent = $p.find('.parent-select').val(); }
-                    $r.css('margin-left', indent+'px');
-                }
+      const modal = $(`
+        <div class="modal fade" id="unitModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header"><h5 class="modal-title">Add Unit</h5></div>
+              <div class="modal-body">
+                <select class="form-select form-select-sm unit-select"></select>
+                <input class="form-control form-control-sm mt-2 qty-input" placeholder="Quantity" type="number" min="1">
+                <div class="text-danger small error-msg mt-2"></div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" type="button" class="btn btn-primary save-unit">Add</button>
+              </div>
+            </div>
+          </div>
+        </div>`).appendTo('body');
 
-                function chainLabel(){
-                    const unitName = ($uSel.find('option:selected').text()||'');
-                    let parts = ['1 '+unitName];
-                    let total = 1;
-                    let cursor = $r;
-                    while(true){
-                        const qty = parseFloat(cursor.find('.qty').val()||1);
-                        const parentId = cursor.find('.parent-select').val();
-                        if(parentId){
-                            const $p = $wrap.find('.border[data-row-id="'+parentId+'"]');
-                            const parentUnitName = $p.find('select.unit-select option:selected').text();
-                            parts.push('= '+qty+' '+parentUnitName);
-                            total *= qty;
-                            cursor = $p;
-                        } else {
-                            const baseName = v.base_unit ? v.base_unit.title : '';
-                            parts.push('= '+(total*1)+' '+baseName);
-                            break;
-                        }
-                    }
-                    return parts.join(' ');
-                }
+      const modalEl = new bootstrap.Modal(modal[0]);
+      modalEl.show();
 
-                function updateConv(){
-                    const parentText = $parentSel.val() ? 'Per Parent Unit' : 'Per Base Unit';
-                    $r.find('.conv-label').text(chainLabel());
-                    $parentSel.find('option:first').text(parentText);
-                    indentation();
-                }
-                $r.on('keyup change', '.qty, .unit-select, .parent-select', updateConv);
-                updateConv();
+      const unitSelect = modal.find('.unit-select');
+      unitSelect.select2({
+        theme: 'bootstrap4',
+        dropdownParent: modal,
+        ajax: {
+          url: unitStepUrl,
+          type: 'POST',
+          dataType: 'json',
+          delay: 250,
+          headers: { 'X-CSRF-TOKEN': csrf },
+          data: params => ({ op: 'unit-list', searchQuery: params.term, page: params.page || 1 }),
+          processResults: data => ({ results: data.items, pagination: { more: data.pagination.more } })
+        }
+      });
 
-                $r.on('click', '.remove', function(){
-                    const id = $r.data('row-id');
-                    if(id){ $.post(stepUrl, { _token:'{{ csrf_token() }}', op:'delete-additional', id }, function(){ $r.remove(); }); } else { $r.remove(); }
-                });
-
-                $r.on('change', '.default-switch', function(){ const id = $r.data('row-id'); if(!id) { $(this).prop('checked', false); return; } $.post(stepUrl, { _token:'{{ csrf_token() }}', op:'toggle-default', id, value: $(this).is(':checked')?1:0 }, function(){ $wrap.find('.default-switch').not($r.find('.default-switch')).prop('checked', false); }); });
-
-                $uSel.on('select2:select', function(e){
-                    if ($r.data('row-id')) return;
-                    const parentId = $parentSel.val() || null;
-                    if (parentId && hasChild(parentId)) { if(window.Swal){ Swal.fire('Only one child allowed','','warning'); } return; }
-                    const payload = { _token:'{{ csrf_token() }}', op:'add-additional', varient_id: v.id, unit_id: e.params.data.id, parent_id: parentId, is_default: $r.find('.default-switch').is(':checked')?1:0 };
-                    $.post(stepUrl, payload, function(res){ $r.attr('data-row-id', res.id); $r.data('row-id', res.id); populateParents(); updateConv(); });
-                });
-
-                $wrap.append($r);
-                return $r;
-            }
-
-            (v.additional_units||[]).forEach(row => addRow(row));
-
-            function refreshAll(){
-                $wrap.find('.border').each(function(){
-                    const $r = $(this); const $parentSel = $r.find('.parent-select');
-                    $parentSel.html('<option value="">Per Base Unit</option>');
-                    $wrap.find('.border').each(function(){ const id = $(this).data('row-id'); if (id && id !== $r.data('row-id')) { const lbl = $(this).find('select.unit-select option:selected').text(); $parentSel.append(new Option(lbl, id)); } });
-                    const desired = $r.data('desired-parent'); if (desired) { $parentSel.val(desired); }
-                    $r.find('.qty, .unit-select, .parent-select').trigger('change');
-                });
-            }
-            refreshAll();
-
-            $card.on('click', '.add-unit', function(){ addRow(); });
-
-            $('#variantUnitsContainer').append($card);
+      modal.find('.save-unit').on('click', () => {
+        const uid = unitSelect.val();
+        const qty = modal.find('.qty-input').val();
+        const error = modal.find('.error-msg');
+        if (!uid || !qty) return error.text('Unit and Qty required');
+        post({ op: 'add-additional', variant_id: variantId, unit_id: uid, parent_id: parentId, qty }).done(res => {
+          if (res.success) {
+            modalEl.hide();
+            modal.remove();
+            loadVariantsAndUnits();
+          } else {
+            error.text(res.message || 'Unable to add.');
+          }
         });
-    }
+      });
 
-    function load(){ $.post(stepUrl, { _token:'{{ csrf_token() }}', op:'list' }, function(res){ renderItems(res.items||[]); }); }
+      modal.on('hidden.bs.modal', () => modal.remove());
+    })
+    .on('input', '.qty-input', function () {
+      post({ op: 'update-additional-qty', id: $(this).data('id'), qty: $(this).val() });
+    })
+    .on('change', '.default-toggle', function () {
+      post({ op: 'toggle-default', id: $(this).data('id'), value: $(this).is(':checked') ? 1 : 0 });
+    })
+    .on('click', '.unit-delete', function () {
+      if (confirm('Delete this unit and any children?')) {
+        post({ op: 'delete-additional', id: $(this).data('id') }).done(() => loadVariantsAndUnits());
+      }
+    });
 
-    $('#applyAllBtn').on('click', function(){ if(!$('#applyAllCheck').is(':checked')) return; const firstCard = $('#variantUnitsContainer .card').first(); const sourceVarId = firstCard.find('.additional-wrap').data('id'); $.post(stepUrl, { _token:'{{ csrf_token() }}', op:'apply-hierarchy', source_varient_id: sourceVarId }, function(){ load(); }); });
-
-    const initialItems = (function(){
-        try { return JSON.parse(document.getElementById('initialVariantItems').textContent) || []; } catch(e){ return []; }
-    })();
-    if (initialItems.length) { renderItems(initialItems); } else { load(); }
-});
+  /** ==============================
+   *  Initialize
+   * ============================== */
+  $(() => loadVariantsAndUnits());
+})();
 </script>
-<script type="application/json" id="initialVariantItems">@php
-$items = [];
-foreach(\App\Models\ProductVarient::where('product_id', $product->id)->get() as $v){
-    $base = \App\Models\ProductBaseUnit::where('product_id', $product->id)->where('varient_id', $v->id)->first();
-    $baseUnit = null;
-    if ($base) { $u = \App\Models\Unit::find($base->unit_id); if ($u) { $baseUnit = ['id'=>$u->id,'title'=>$u->title]; } }
-    $adds = \App\Models\ProductAdditionalUnit::where('product_id',$product->id)->where('varient_id',$v->id)->orderBy('id')->get();
-    $additional = [];
-    foreach($adds as $a){ $u = \App\Models\Unit::find($a->unit_id); $additional[] = ['id'=>$a->id,'unit'=>$u?['id'=>$u->id,'title'=>$u->title]:null,'parent_id'=>$a->parent_id,'is_default'=>(bool)$a->is_default_selling_unit]; }
-    $items[] = ['id'=>$v->id,'name'=>$v->name,'base_unit'=>$baseUnit,'additional_units'=>$additional];
-}
-echo json_encode($items);
-@endphp</script>
 @endpush

@@ -483,177 +483,120 @@ class ProductController extends Controller
             case 3:
                 $product = Product::findOrFail($id);
                 if ($request->ajax()) {
-                    $request->validate([
-                        'op' => 'required|string',
-                    ]);
-
-                    if ($request->op === 'unit-list') {
-                        $queryString = trim($request->input('searchQuery', ''));
-                        $page = (int) $request->input('page', 1);
-                        $limit = 10;
-                        $query = \App\Models\Unit::query();
-                        if (!empty($queryString)) {
-                            $query->where(function($q) use ($queryString){
-                                $q->where('title', 'LIKE', "%{$queryString}%")
-                                  ->orWhere('text', 'LIKE', "%{$queryString}%");
-                            });
-                        }
-                        $data = $query->paginate($limit, ['*'], 'page', $page);
-                        $response = $data->map(function ($item) {
-                            return [ 'id' => $item->id, 'text' => $item->title ];
-                        });
-                        return response()->json(['items' => $response->values(), 'pagination' => ['more' => $data->hasMorePages()]]);
-                    }
-
-                    if ($request->op === 'list') {
+                    $request->validate(['op' => 'required|string']);
+                    if($request->op === 'fetch-variants-units-tree') {
                         $variants = \App\Models\ProductVarient::where('product_id', $product->id)->get();
-                        $items = [];
-                        foreach ($variants as $v) {
-                            $base = \App\Models\ProductBaseUnit::where('product_id', $product->id)->where('varient_id', $v->id)->first();
-                            $baseUnit = null;
-                            if ($base) {
-                                $u = \App\Models\Unit::find($base->unit_id);
-                                if ($u) $baseUnit = ['id' => $u->id, 'title' => $u->title];
-                            }
-                            $adds = \App\Models\ProductAdditionalUnit::where('product_id', $product->id)->where('varient_id', $v->id)->orderBy('id')->get();
-                            $additional = [];
-                            foreach ($adds as $a) {
-                                $u = \App\Models\Unit::find($a->unit_id);
-                                $additional[] = [
-                                    'id' => $a->id,
-                                    'unit' => $u ? ['id' => $u->id, 'title' => $u->title] : null,
-                                    'parent_id' => $a->parent_id,
-                                    'is_default' => (bool) $a->is_default_selling_unit,
+                        $results = [];
+                        foreach ($variants as $variant) {
+                            $baseUnitRow = \App\Models\ProductBaseUnit::where('product_id', $product->id)->where('varient_id', $variant->id)->first();
+                            $baseUnit = $baseUnitRow ? [
+                                'id' => $baseUnitRow->unit_id,
+                                'label' => (\App\Models\Unit::find($baseUnitRow->unit_id)?->title) ?? '',
+                                'is_default' => true,
+                            ] : null;
+                            $adds = \App\Models\ProductAdditionalUnit::where('product_id',$product->id)->where('varient_id',$variant->id)->orderBy('id')->get();
+                            $unitMap = [];
+                            foreach($adds as $add) {
+                                $unitMap[$add->id] = [
+                                    'id' => $add->id,
+                                    'unit_id' => $add->unit_id,
+                                    'qty' => $add->quantity,
+                                    'parent_id' => $add->parent_id,
+                                    'is_default' => (bool)$add->is_default_selling_unit,
+                                    'unit' => [
+                                        'label' => (\App\Models\Unit::find($add->unit_id)?->title) ?? ''
+                                    ],
                                 ];
                             }
-                            $items[] = [
-                                'id' => $v->id,
-                                'name' => $v->name,
-                                'base_unit' => $baseUnit,
-                                'additional_units' => $additional,
-                            ];
+                            foreach ($unitMap as $uid => &$unit) { $unit['children'] = array_filter($unitMap, fn($x) => $x['parent_id']===$uid); }
+                            unset($unit);
+                            $results[] = [ 'id' => $variant->id, 'name' => $variant->name, 'base_unit' => $baseUnit, 'additional_units' => array_values($unitMap) ];
                         }
-                        return response()->json(['items' => $items]);
+                        return response()->json(['variants'=>$results]);
                     }
-
-                    if ($request->op === 'set-base') {
+                    if($request->op === 'set-base') {
                         $request->validate([
-                            'varient_id' => 'required|integer|exists:product_varients,id',
+                            'variant_id' => 'required|integer|exists:product_varients,id',
                             'unit_id' => 'required|integer|exists:units,id',
                         ]);
-                        $variant = \App\Models\ProductVarient::where('product_id', $product->id)->findOrFail($request->varient_id);
+                        $variant = \App\Models\ProductVarient::where('product_id',$product->id)->findOrFail($request->variant_id);
                         \App\Models\ProductBaseUnit::updateOrCreate(
-                            ['product_id' => $product->id, 'varient_id' => $variant->id],
-                            ['unit_id' => (int) $request->unit_id]
+                            ['product_id'=>$product->id,'varient_id'=>$variant->id],
+                            ['unit_id'=>(int)$request->unit_id]
                         );
-                        return response()->json(['success' => true]);
+                        return response()->json(['success'=>true]);
                     }
-
-                    if ($request->op === 'add-additional') {
+                    if($request->op === 'unit-list') {
+                        $query = \App\Models\Unit::query();
+                        $searchQuery = $request->input('searchQuery','');
+                        if($searchQuery) {
+                            $query->where(function($q)use($searchQuery){$q->where('title','like',"%$searchQuery%") ->orWhere('text','like',"%$searchQuery% ");});}
+                        $units = $query->limit(10)->get();
+                        $data = $units->map(fn($u)=>['id'=>$u->id, 'text'=>$u->title]);
+                        return response()->json(['items'=>$data, 'pagination'=>['more'=>false]]);
+                    }
+                    if($request->op === 'add-additional') {
                         $request->validate([
-                            'varient_id' => 'required|integer|exists:product_varients,id',
-                            'unit_id' => 'required|integer|exists:units,id',
-                            'parent_id' => 'nullable|integer|exists:product_additional_units,id',
-                            'is_default' => 'nullable|boolean',
+                            'variant_id'=>'required|integer|exists:product_varients,id',
+                            'unit_id'=>'required|integer|exists:units,id',
+                            'qty'=>'required|numeric|min:1',
+                            'parent_id'=>'nullable|integer|exists:product_additional_units,id'
                         ]);
-                        $variant = \App\Models\ProductVarient::where('product_id', $product->id)->findOrFail($request->varient_id);
-                        DB::beginTransaction();
-                        try {
-                            if (!empty($request->parent_id)) {
-                                $existingChild = \App\Models\ProductAdditionalUnit::where('product_id', $product->id)
-                                    ->where('varient_id', $variant->id)
-                                    ->where('parent_id', $request->parent_id)
-                                    ->first();
-                                if ($existingChild) {
-                                    DB::rollBack();
-                                    return response()->json(['message' => 'Parent already has a child'], 422);
-                                }
-                            }
-                            if ($request->boolean('is_default')) {
-                                \App\Models\ProductAdditionalUnit::where('product_id', $product->id)->where('varient_id', $variant->id)->update(['is_default_selling_unit' => 0]);
-                            }
-                            $add = \App\Models\ProductAdditionalUnit::create([
-                                'product_id' => $product->id,
-                                'varient_id' => $variant->id,
-                                'unit_id' => (int) $request->unit_id,
-                                'parent_id' => $request->input('parent_id'),
-                                'is_default_selling_unit' => $request->boolean('is_default') ? 1 : 0,
-                            ]);
-                            DB::commit();
-                            $unit = \App\Models\Unit::find($add->unit_id);
-                            return response()->json(['id' => $add->id, 'unit' => ['id' => $unit?->id, 'title' => $unit?->title], 'parent_id' => $add->parent_id, 'is_default' => (bool) $add->is_default_selling_unit]);
-                        } catch (\Throwable $th) {
-                            DB::rollBack();
-                            return response()->json(['message' => 'Unable to add unit'], 422);
+                        $variantId = $request->variant_id;
+                        $parent = $request->parent_id ? \App\Models\ProductAdditionalUnit::find($request->parent_id) : null;
+                        // Only one child allowed
+                        if($parent) {
+                            $hasChild = \App\Models\ProductAdditionalUnit::where('parent_id', $parent->id)->exists();
+                            if($hasChild) return response()->json(['success'=>false, 'message'=>'This unit already has a child.']);
                         }
-                    }
-
-                    if ($request->op === 'toggle-default') {
-                        $request->validate([
-                            'id' => 'required|integer|exists:product_additional_units,id',
-                            'value' => 'required|boolean',
+                        // Prevent same unit_id under same parent/branch for this variant
+                        $branchIds = collect([$request->parent_id]);
+                        while($branchIds->last()) {
+                            $anc = \App\Models\ProductAdditionalUnit::find($branchIds->last());
+                            $branchIds->push($anc?$anc->parent_id:null);
+                        }
+                        if(in_array($request->unit_id, $branchIds->toArray())) return response()->json(['success'=>false,'message'=>'Cyclic unit structure not allowed.']);
+                        $row = \App\Models\ProductAdditionalUnit::create([
+                            'product_id'=>$product->id,
+                            'varient_id'=>$variantId,
+                            'unit_id'=>$request->unit_id,
+                            'quantity'=>$request->qty,
+                            'parent_id'=>$request->parent_id,
+                            'is_default_selling_unit'=>0,
                         ]);
+                        return response()->json(['success'=>true]);
+                    }
+                    if($request->op === 'update-additional-qty') {
+                        $request->validate(['id'=>'required|integer|exists:product_additional_units,id','qty'=>'required|numeric|min:1']);
                         $row = \App\Models\ProductAdditionalUnit::findOrFail($request->id);
-                        if ($request->boolean('value')) {
-                            \App\Models\ProductAdditionalUnit::where('product_id', $row->product_id)->where('varient_id', $row->varient_id)->update(['is_default_selling_unit' => 0]);
-                        }
-                        $row->is_default_selling_unit = $request->boolean('value') ? 1 : 0;
+                        $row->quantity = $request->quantity;
                         $row->save();
-                        return response()->json(['success' => true]);
+                        return response()->json(['success'=>true]);
                     }
-
-                    if ($request->op === 'delete-additional') {
-                        $request->validate([
-                            'id' => 'required|integer|exists:product_additional_units,id',
-                        ]);
-                        DB::beginTransaction();
-                        try {
-                            $row = \App\Models\ProductAdditionalUnit::findOrFail($request->id);
-                            \App\Models\ProductAdditionalUnit::where('parent_id', $row->id)->update(['parent_id' => null]);
-                            $row->delete();
-                            DB::commit();
-                            return response()->json(['success' => true]);
-                        } catch (\Throwable $th) {
-                            DB::rollBack();
-                            return response()->json(['message' => 'Unable to delete'], 422);
+                    if($request->op === 'toggle-default') {
+                        $request->validate(['id'=>'required|integer|exists:product_additional_units,id','value'=>'required|boolean']);
+                        $row = \App\Models\ProductAdditionalUnit::findOrFail($request->id);
+                        // Only one default per variant
+                        \App\Models\ProductAdditionalUnit::where('varient_id',$row->varient_id)->where('product_id',$row->product_id)->update(['is_default_selling_unit'=>0]);
+                        $row->is_default_selling_unit = $request->value ? 1 : 0;
+                        $row->save();
+                        return response()->json(['success'=>true]);
+                    }
+                    if($request->op==='delete-additional') {
+                        $request->validate(['id'=>'required|integer|exists:product_additional_units,id']);
+                        // Delete this additional unit and any children recursively
+                        $toDelete = [$request->id];
+                        $queue = [$request->id];
+                        while($queue) {
+                            $par = array_shift($queue);
+                            $chs = \App\Models\ProductAdditionalUnit::where('parent_id',$par)->pluck('id')->toArray();
+                            foreach($chs as $cid) { $toDelete[]=$cid; $queue[]=$cid; }
                         }
+                        \App\Models\ProductAdditionalUnit::whereIn('id',$toDelete)->delete();
+                        return response()->json(['success'=>true]);
                     }
-
-                    if ($request->op === 'apply-hierarchy') {
-                        $request->validate([
-                            'source_varient_id' => 'required|integer|exists:product_varients,id',
-                        ]);
-                        $source = \App\Models\ProductVarient::where('product_id', $product->id)->findOrFail($request->source_varient_id);
-                        $base = \App\Models\ProductBaseUnit::where('product_id', $product->id)->where('varient_id', $source->id)->first();
-                        $sourceAdds = \App\Models\ProductAdditionalUnit::where('product_id', $product->id)->where('varient_id', $source->id)->orderBy('id')->get();
-                        $others = \App\Models\ProductVarient::where('product_id', $product->id)->where('id', '!=', $source->id)->get();
-                        foreach ($others as $ov) {
-                            if ($base) {
-                                \App\Models\ProductBaseUnit::updateOrCreate(
-                                    ['product_id' => $product->id, 'varient_id' => $ov->id],
-                                    ['unit_id' => $base->unit_id]
-                                );
-                            }
-                            \App\Models\ProductAdditionalUnit::where('product_id', $product->id)->where('varient_id', $ov->id)->delete();
-                            $map = [];
-                            foreach ($sourceAdds as $a) {
-                                $newParent = $a->parent_id ? ($map[$a->parent_id] ?? null) : null;
-                                $created = \App\Models\ProductAdditionalUnit::create([
-                                    'product_id' => $product->id,
-                                    'varient_id' => $ov->id,
-                                    'unit_id' => $a->unit_id,
-                                    'parent_id' => $newParent,
-                                    'is_default_selling_unit' => $a->is_default_selling_unit,
-                                ]);
-                                $map[$a->id] = $created->id;
-                            }
-                        }
-                        return response()->json(['success' => true]);
-                    }
-
-                    return response()->json(['message' => 'Unknown operation'], 422);
                 }
-
+                // ... fallback ...
                 return redirect()->back();
 
                 break;
