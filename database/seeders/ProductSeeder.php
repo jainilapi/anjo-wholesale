@@ -67,17 +67,13 @@ class ProductSeeder extends Seeder
         ];
 
         foreach ($simpleProducts as $product) {
-            DB::table('products')->insertGetId([
+            \App\Models\Product::create([
                 'name' => $product['name'],
                 'sku' => $product['sku'],
                 'short_description' => $product['short_description'],
                 'long_description' => $product['long_description'],
                 'type' => $product['type'],
                 'single_product_price' => $product['single_product_price'],
-                'category' => $product['category'],
-                'brand' => $product['brand'],
-                'unit' => $product['unit'],
-                'image' => $product['image'],
                 'tags' => $product['tags'] ?? [],
                 'created_at' => $now,
                 'updated_at' => $now,
