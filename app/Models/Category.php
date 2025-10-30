@@ -27,4 +27,18 @@ class Category extends Model
     {
         return $this->hasMany(Category::class, 'parent_id');
     }
+
+    public static function buildCategoryTree($parentId = null) {
+        $categories = Category::where('parent_id', $parentId)
+            ->whereNull('deleted_at')
+            ->where('status', 1)
+            ->orderBy('name')
+            ->get();
+
+        foreach ($categories as $category) {
+            $category->children = self::buildCategoryTree($category->id);
+        }
+
+        return $categories;
+    }
 }

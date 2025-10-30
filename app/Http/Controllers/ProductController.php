@@ -602,7 +602,62 @@ class ProductController extends Controller
                         ->with('success', 'Data saved successfully');
             case 4:
 
-                break;
+        try {
+            DB::beginTransaction();
+
+            // Get or create product
+            $product = Product::findOrFail($id);
+
+            // Update product promotional and SEO settings
+            $product->update([
+                'should_feature_on_home_page' => $request->input('should_feature_on_home_page', 0),
+                'is_new_product' => $request->input('is_new_product', 0),
+                'is_best_seller' => $request->input('is_best_seller', 0),
+                'seo_title' => $request->input('seo_title'),
+                'seo_description' => $request->input('seo_description'),
+                'in_draft' => $request->input('action') === 'save_draft' ? 1 : 0,
+            ]);
+
+            // Clear existing categories
+            \App\Models\ProductCategory::where('product_id', $product->id)->delete();
+
+            // Save primary category
+            \App\Models\ProductCategory::create([
+                'product_id' => $product->id,
+                'category_id' => $request->input('primary_category'),
+                'is_primary' => 1,
+            ]);
+
+            // Save additional categories
+            if ($request->has('additional_categories')) {
+                $additionalCategories = array_diff(
+                    $request->input('additional_categories'),
+                    [$request->input('primary_category')]
+                );
+
+                foreach ($additionalCategories as $categoryId) {
+                    \App\Models\ProductCategory::create([
+                        'product_id' => $product->id,
+                        'category_id' => $categoryId,
+                        'is_primary' => 0,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+                return redirect()
+                    ->route('products.index')
+                    ->with('success', 'Data saved successfully');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Failed to save product: ' . $e->getMessage());
+        }
             case 5:
 
                 break;

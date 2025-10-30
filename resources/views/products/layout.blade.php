@@ -1,5 +1,9 @@
 @extends('layouts.app', ['title' => 'Product Management', 'subTitle' => 'Enter the information for your product', 'select2' => true, 'editor' => true])
 
+@push('css')
+@stack('product-css')
+@endpush
+
 @section('content')
 @include('products.steps', ['currentStep' => $step, 'type' => $type])
 

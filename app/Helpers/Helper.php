@@ -51,7 +51,7 @@ class Helper {
     {
         $queryString = trim($request->searchQuery);
         $page = $request->input('page', 1);
-        $limit = 10;
+        $limit = 100;
     
         $query = State::query()
         ->when(is_numeric(request('country_id')), fn ($builder) => $builder->where('country_id', request('country_id')));
@@ -80,7 +80,7 @@ class Helper {
     {
         $queryString = trim($request->searchQuery);
         $page = $request->input('page', 1);
-        $limit = 10;
+        $limit = 500;
     
         $query = City::query()
         ->where('state_id', $request->state_id);
