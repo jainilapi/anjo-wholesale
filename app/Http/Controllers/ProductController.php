@@ -111,7 +111,8 @@ class ProductController extends Controller
 
         if (empty($id)) {
             $product = Product::create([
-                'name' => 'Untitled Product'
+                'name' => 'Untitled Product',
+                'type' => 'variable'
             ]);
 
             return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt($step), 'id' => encrypt($product->id)]);
@@ -194,7 +195,7 @@ class ProductController extends Controller
 
                     DB::commit();
                     return redirect()->route('product-management', ['type' => encrypt('simple'), 'step' => encrypt(2), 'id' => encrypt($product->id)])
-                        ->with('success', 'Product details saved');
+                        ->with('success', 'Data saved successfully');
                 } catch (\Exception $e) {
                     DB::rollBack();
                     return back()->withInput()->with('error', 'Something went wrong');
@@ -276,7 +277,7 @@ class ProductController extends Controller
 
                     DB::commit();
                     return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(2), 'id' => encrypt($product->id)])
-                        ->with('success', 'Product details saved');
+                        ->with('success', 'Data saved successfully');
                 } catch (\Exception $e) {
                     DB::rollBack();
                     return back()->withInput()->with('error', 'Something went wrong');
@@ -479,7 +480,7 @@ class ProductController extends Controller
                 }
 
                     return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(3), 'id' => encrypt($product->id)])
-                        ->with('success', 'Product details saved');
+                        ->with('success', 'Data saved successfully');
             case 3:
                 $product = Product::findOrFail($id);
                 if ($request->ajax()) {
@@ -596,10 +597,9 @@ class ProductController extends Controller
                         return response()->json(['success'=>true]);
                     }
                 }
-                // ... fallback ...
-                return redirect()->back();
 
-                break;
+                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(4), 'id' => encrypt($product->id)])
+                        ->with('success', 'Data saved successfully');
             case 4:
 
                 break;
@@ -675,7 +675,7 @@ class ProductController extends Controller
 
                     DB::commit();
                     return redirect()->route('product-management', ['type' => encrypt('bundled'), 'step' => encrypt(2), 'id' => encrypt($product->id)])
-                        ->with('success', 'Product details saved');
+                        ->with('success', 'Data saved successfully');
                 } catch (\Exception $e) {
                     DB::rollBack();
                     return back()->withInput()->with('error', 'Something went wrong');
