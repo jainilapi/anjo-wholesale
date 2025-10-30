@@ -23,20 +23,31 @@
 
                     <div class="mb-3">
                         <label class="form-label">Product Type *</label>
-                        <div class="d-flex gap-4">
+                        <div class="">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="type_switch" id="typeSimple" value="simple" {{ $product->type === 'simple' ? 'checked' : '' }}>
-                                <label class="form-check-label" for="typeSimple">Simple</label>
+                                <label class="form-check-label" for="typeSimple">Simple - Single product with no variations </label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="type_switch" id="typeVariable" value="variable" {{ $product->type === 'variable' ? 'checked' : '' }}>
-                                <label class="form-check-label" for="typeVariable">Variable</label>
+                                <label class="form-check-label" for="typeVariable">Variable - Product with attributes & variants</label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="type_switch" id="typeBundled" value="bundled" {{ $product->type === 'bundled' ? 'checked' : '' }}>
-                                <label class="form-check-label" for="typeBundled">Bundled</label>
+                                <label class="form-check-label" for="typeBundled">Bundled - Multiple products sold together</label>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Tags *</label>
+                        <select name="tags[]" class="form-select" id="tags" multiple>
+                            @php($selectedTags = old('tags', $product->tags ?? []))
+                            @foreach($selectedTags as $tag)
+                                <option value="{{ $tag }}"  selected>{{ $tag }}</option>
+                            @endforeach
+                        </select>
+                        @error('tags')<div class="text-danger small">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="mb-3">
@@ -138,6 +149,13 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             processResults: function (data) { return { results: data.items, pagination: { more: data.pagination.more } }; }
         }
+    });
+
+    $('#tags').select2({
+        theme: 'bootstrap4',
+        tags: true,
+        tokenSeparators: [','],
+        placeholder: 'Select or add tags',
     });
 
     const shortQ = new Quill('#shortDescriptionEditor', { theme: 'snow' });
