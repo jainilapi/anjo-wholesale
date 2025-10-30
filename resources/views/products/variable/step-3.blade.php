@@ -2,7 +2,7 @@
 @section('product-content')
 <div id="variantUnitsContainer" class="d-flex flex-column gap-3"></div>
 
-<div class="card mt-3">
+<!-- <div class="card mt-3">
     <div class="card-body d-flex justify-content-between align-items-center">
         <div class="form-check">
             <input class="form-check-input" type="checkbox" id="applyAllCheck">
@@ -10,7 +10,7 @@
         </div>
         <button type="button" class="btn btn-outline-secondary" id="applyAllBtn">Apply to All</button>
     </div>
-</div>
+</div> -->
 
 @endsection
 
@@ -28,11 +28,16 @@ $(function(){
         const $c = $('#variantUnitsContainer');
         $c.empty();
         items.forEach(function(v){
+
+        let fLetter = (v && typeof v.name === 'string') ? v.name : 'Variant';
+        fLetter = (typeof fLetter === 'string' && fLetter.length > 0) ? fLetter[0] : '';
+
+
         const $card = $(`
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-light text-dark">C</span>
+                        <span class="badge bg-light text-dark">${fLetter}</span>
                         <strong>${v.name || 'Variant'}</strong>
                     </div>
                     <button type="button" class="btn btn-sm btn-link" data-bs-toggle="collapse" data-bs-target="#col_${v.id}">
@@ -61,7 +66,6 @@ $(function(){
                                 <div class="me-2" style="width:260px">
                                     <select class="form-select form-select-sm base-unit" data-id="${v.id}"></select>
                                 </div>
-                                <span class="text-muted small">Base selling unit</span>
                             </div>
                         </div>
 

@@ -3,7 +3,7 @@
     $steps = ['Basics', 'Pack Sizes', 'Pricing', 'Inventory', 'Category', 'Review'];
 
     if ($type != 'simple') {
-        array_splice($steps, 1, 1, 'Variants');
+        array_splice($steps, 1, 0, 'Variants');
     }
 
 @endphp
