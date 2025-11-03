@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('parent_id')->nullable();
             $table->unsignedBigInteger('product_id');
-            $table->unsignedBigInteger('varient_id');
+            $table->unsignedBigInteger('varient_id')->nullable();
             $table->double('quantity')->default(0);
             $table->unsignedBigInteger('unit_id');
             $table->boolean('is_default_selling_unit')->default(0);

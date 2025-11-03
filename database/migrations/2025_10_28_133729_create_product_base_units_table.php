@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('product_base_units', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('product_id');
-            $table->unsignedBigInteger('varient_id');
+            $table->unsignedBigInteger('varient_id')->nullable();
             $table->unsignedBigInteger('unit_id');
             $table->softDeletes();
             $table->timestamps();
