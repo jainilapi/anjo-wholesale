@@ -103,6 +103,35 @@ class PermissionSeeder extends Seeder
             ],
 
             [
+                'name' => 'Suppliers Listing',
+                'slug' => 'suppliers.index'
+            ],
+            [
+                'name' => 'Suppliers Add',
+                'slug' => 'suppliers.create'
+            ],
+            [
+                'name' => 'Suppliers Save',
+                'slug' => 'suppliers.store'
+            ],
+            [
+                'name' => 'Suppliers Edit',
+                'slug' => 'suppliers.edit'
+            ],
+            [
+                'name' => 'Suppliers Update',
+                'slug' => 'suppliers.update'
+            ],
+            [
+                'name' => 'Suppliers View',
+                'slug' => 'suppliers.show'
+            ],
+            [
+                'name' => 'Suppliers Delete',
+                'slug' => 'suppliers.destroy'
+            ],
+
+            [
                 'name' => 'Locations Listing',
                 'slug' => 'locations.index'
             ],

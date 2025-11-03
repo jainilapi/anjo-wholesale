@@ -46,6 +46,14 @@
             </li>
             @endif
 
+            @if(auth()->user()->isAdmin() || auth()->user()->can('suppliers.index'))
+            <li class="sidebar-item @if( request()->segment(1) == 'suppliers') active @endif">
+                <a href="{{ route('suppliers.index') }}" class="sidebar-link">
+                    <i class="align-middle me-2 fas fa-fw fa-user"></i> <span class="align-middle"> Suppliers </span>
+                </a>
+            </li>
+            @endif
+
             @if(auth()->user()->isAdmin() || auth()->user()->can('warehouses.index'))
             <li class="sidebar-item @if( request()->segment(1) == 'warehouses') active @endif">
                 <a href="{{ route('warehouses.index') }}" class="sidebar-link">
