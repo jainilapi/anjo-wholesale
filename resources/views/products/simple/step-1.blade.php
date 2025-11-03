@@ -5,13 +5,13 @@
             <div class="card">
                 <div class="card-body">
                     <div class="mb-3">
-                        <label class="form-label">Product Name *</label>
+                        <label class="form-label">Product Name <span class="text-danger"> * </span> </label>
                         <input type="text" name="name" class="form-control" value="{{ old('name', $product->name) }}" required>
                         @error('name')<div class="text-danger small">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Brand *</label>
+                        <label class="form-label">Brand <span class="text-danger"> * </span></label>
                         <select name="brand_id" id="brandSelect" class="form-select" data-placeholder="Select brand" required>
                             @php($selectedBrand = optional($product->brands->first())->id)
                             @if($selectedBrand)
@@ -22,7 +22,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Product Type *</label>
+                        <label class="form-label">Product Type <span class="text-danger"> * </span></label>
                         <div class="">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="type_switch" id="typeSimple" value="simple" {{ $product->type === 'simple' ? 'checked' : '' }}>
@@ -40,7 +40,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Tags *</label>
+                        <label class="form-label">Tags <span class="text-danger"> * </span></label>
                         <select name="tags[]" class="form-select" id="tags" multiple>
                             @php($selectedTags = old('tags', $product->tags ?? []))
                             @foreach($selectedTags as $tag)
@@ -51,21 +51,21 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Short Description *</label>
+                        <label class="form-label">Short Description <span class="text-danger"> * </span></label>
                         <div id="shortDescriptionEditor" class="form-control" style="min-height:120px;">{!! old('short_description', $product->short_description) !!}</div>
                         <input type="hidden" name="short_description" id="shortDescriptionInput" required>
                         @error('short_description')<div class="text-danger small">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Long Description *</label>
+                        <label class="form-label">Long Description <span class="text-danger"> * </span></label>
                         <div id="longDescriptionEditor" class="form-control" style="min-height:160px;">{!! old('long_description', $product->long_description) !!}</div>
                         <input type="hidden" name="long_description" id="longDescriptionInput" required>
                         @error('long_description')<div class="text-danger small">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Product Status *</label>
+                        <label class="form-label">Product Status <span class="text-danger"> * </span></label>
                         <div class="form-switch">
                             <input class="form-check-input" type="checkbox" role="switch" id="statusSwitch" name="status" value="1" {{ old('status', $product->status) ? 'checked' : '' }}>
                             <label class="form-check-label" for="statusSwitch">Active</label>
@@ -79,7 +79,7 @@
         <div class="col-lg-4">
             <div class="card mb-4">
                 <div class="card-body">
-                    <label class="form-label">Main Product Image *</label>
+                    <label class="form-label">Main Product Image <span class="text-danger"> * </span> </label>
                     <input type="file" name="primary_image" id="primaryImage" class="form-control" accept="image/png,image/jpeg,image/webp" {{ $product->exists ? '' : 'required' }}>
                     @error('primary_image')<div class="text-danger small">{{ $message }}</div>@enderror
                     @php($existingPrimary = $product->primaryImage)
@@ -128,6 +128,26 @@ document.addEventListener('DOMContentLoaded', function() {
         variable: "{{ route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(1), 'id' => encrypt($product->id)]) }}",
         bundled: "{{ route('product-management', ['type' => encrypt('bundled'), 'step' => encrypt(1), 'id' => encrypt($product->id)]) }}",
     };
+
+    $('#productStep1Form').validate({
+        rules: {
+            name: {
+                required: true
+            },
+            brand_id: {
+                required: true
+            },
+            "tags[]": {
+                required: true
+            },
+            primary_image: {
+                required: @if($existingPrimary) false @else true @endif
+            },
+        },
+        errorPlacement: function (error, element) {
+            error.appendTo(element.parent("div"));
+        }
+    });
 
     document.querySelectorAll('input[name="type_switch"]').forEach(r => r.addEventListener('change', function(){
         const to = this.value;

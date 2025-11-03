@@ -2,6 +2,11 @@
 
 @push('css')
 @stack('product-css')
+<style>
+    label.error {
+        color: red;
+    }
+</style>
 @endpush
 
 @section('content')
