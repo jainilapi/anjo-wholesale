@@ -35,6 +35,12 @@ class RoleSeeder extends Seeder
                 'slug' => 'cashier',
                 'is_internal_role' => 1,
                 'is_sytem_role' => 1
+            ],
+            [
+                'name' => 'Supplier',
+                'slug' => 'supplier',
+                'is_internal_role' => 0,
+                'is_sytem_role' => 1
             ]
         ];
 

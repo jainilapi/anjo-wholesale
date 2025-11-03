@@ -2,9 +2,11 @@
 
 namespace Database\Seeders;
 
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
-use DB;
 
 class BrandSeeder extends Seeder
 {
@@ -18,46 +20,55 @@ class BrandSeeder extends Seeder
                 'name' => 'Nestlé',
                 'slug' => Str::slug('Nestlé'),
                 'description' => 'Global food and beverage company producing dairy, coffee, and confectionery products.',
-                'logo' => 'brands/nestle.png',
+                'url' => 'https://en.wikipedia.org/wiki/Nestl%C3%A9#/media/File:Nestl%C3%A9.svg',
                 'status' => 1,
             ],
             [
                 'name' => 'PepsiCo',
                 'slug' => Str::slug('PepsiCo'),
                 'description' => 'Multinational food, snack, and beverage corporation best known for Pepsi, Lay’s, and Gatorade.',
-                'logo' => 'brands/pepsico.png',
+                'url' => 'https://en.wikipedia.org/wiki/PepsiCo#/media/File:PepsiCo_(2025,_wordmark).svg',
                 'status' => 1,
             ],
             [
                 'name' => 'Heineken',
                 'slug' => Str::slug('Heineken'),
                 'description' => 'Dutch brewing company producing premium lagers and other alcoholic beverages.',
-                'logo' => 'brands/heineken.png',
+                'url' => 'https://en.wikipedia.org/wiki/Heineken#/media/File:Heineken_logo.svg',
                 'status' => 1,
             ],
             [
                 'name' => 'Coca-Cola',
                 'slug' => Str::slug('Coca-Cola'),
                 'description' => 'World’s leading beverage company with a wide portfolio of soft drinks and juices.',
-                'logo' => 'brands/coca_cola.png',
+                'url' => 'https://en.wikipedia.org/wiki/Coca-Cola#/media/File:Coca-Cola_logo.svg',
                 'status' => 1,
             ],
             [
                 'name' => 'AB InBev',
                 'slug' => Str::slug('AB InBev'),
                 'description' => 'Largest beer company globally with brands like Budweiser, Corona, and Stella Artois.',
-                'logo' => 'brands/ab_inbev.png',
+                'url' => 'https://en.wikipedia.org/wiki/AB_InBev#/media/File:Anheuser-Busch_InBev_-_logo_(Belgium,_2022-).svg',
                 'status' => 1,
             ],
             [
-                'name' => 'Mondelez International',
-                'slug' => Str::slug('Mondelez International'),
-                'description' => 'Producer of snacks and confectionery brands such as Oreo, Cadbury, and Toblerone.',
-                'logo' => 'brands/mondelez.png',
+                'name' => 'Dr Pepper',
+                'slug' => Str::slug('Dr Pepper'),
+                'description' => 'Dr Pepper is a carbonated soft drink',
+                'url' => 'https://en.wikipedia.org/wiki/Dr_Pepper#/media/File:Dr_Pepper_modern.svg',
                 'status' => 1,
             ],
         ];
 
-        DB::table('brands')->insert($brands);
+        foreach ($brands as $brand) {
+            DB::table('brands')->updateOrInsert(
+                ['slug' => $brand['slug']],
+                [
+                    'name' => $brand['name'],
+                    'description' => $brand['description'],
+                    'status' => 1,
+                ]
+            );
+        }
     }
 }
