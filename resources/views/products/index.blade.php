@@ -5,7 +5,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <a href="{{ route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(1)]) }}" class="btn btn-primary float-end">
+                <a href="{{ route('product-management', ['type' => encrypt('simple'), 'step' => encrypt(1)]) }}" class="btn btn-primary float-end">
                     <i class="fa fa-plus"></i> Add New Product
                 </a>
             </div>

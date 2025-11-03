@@ -22,6 +22,10 @@
                     <strong>Description:</strong>
                     <div>{!! nl2br(e($category->description)) !!}</div>
                 </div>
+                <div class="mb-3">
+                    <strong>Logo:</strong>
+                    <img src="{{ $category->logo_url }}">
+                </div>
                 <a href="{{ route('categories.index') }}" class="btn btn-secondary">Back</a>
             </div>
         </div>

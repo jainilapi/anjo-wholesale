@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
@@ -40,5 +41,31 @@ class Category extends Model
         }
 
         return $categories;
+    }
+
+    public function getLogoPathAttribute()
+    {
+        if ($this->logo) {
+            $path = storage_path('app/public/categories/' . $this->logo);
+
+            if (file_exists($path) && is_file($path)) {
+                return Storage::path('public/categories/' . $this->logo);
+            }
+        }
+
+        return public_path('assets/images/default-category.png');
+    }
+    
+    public function getLogoUrlAttribute()
+    {
+        if ($this->logo) {
+            $path = storage_path('app/public/categories/' . $this->logo);
+
+            if (file_exists($path) && is_file($path)) {
+                return Storage::url('categories/' . $this->logo);
+            }
+        }
+
+        return asset('assets/images/default-category.png');
     }
 }

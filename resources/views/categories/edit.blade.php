@@ -6,7 +6,7 @@
         <div class="card">
             <div class="card-header">Edit Category</div>
             <div class="card-body">
-                <form id="categoryForm" method="POST" action="{{ route('categories.update', encrypt($category->id)) }}">
+                <form id="categoryForm" method="POST" action="{{ route('categories.update', encrypt($category->id)) }}" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
                     <div class="mb-3">
@@ -25,6 +25,18 @@
                         </select>
                         @error('parent_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
+
+                    <div class="mb-3">
+                        <label for="image" class="form-label"> Image <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control @error('image') is-invalid @enderror" id="image" name="image" @if(empty($category->logo)) required @endif>
+                        @error('image')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="text-center">
+                        <img id="previewImage" src="{{ $category->logo_url }}" alt="Image preview" class="img-fluid rounded shadow-sm @if(empty($category->logo_url)) d-none @endif" style="max-height: 300px;">
+                        </div>
+                    </div>                    
 
                     <div class="mb-3">
                         <label for="tags" class="form-label">Tags</label>
@@ -58,6 +70,25 @@
 <script src="{{ asset('assets/js/jquery-validate.min.js') }}"></script>
 <script>
 $(document).ready(function() {
+
+    const imageInput = document.getElementById('image');
+    const previewImage = document.getElementById('previewImage');
+
+    imageInput.addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          previewImage.src = e.target.result;
+          previewImage.classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+      } else {
+        previewImage.src = '';
+        previewImage.classList.add('d-none');
+      }
+    });
+
     $('#parent_id').select2({ placeholder: 'Select parent', width: '100%' });
     $('#tags').select2({ tags: true, tokenSeparators: [','], width: '100%', placeholder: 'Add tags' });
     $('#categoryForm').validate({ rules: { name: { required: true } }, submitHandler: function (form) { form.submit(); } });

@@ -1,6 +1,6 @@
 @php
 
-    $steps = ['Basics', 'Pack Sizes', 'Category'];
+    $steps = ['Basics', 'Pack Sizes', 'Pricing', 'Inventory', 'Category', 'Review'];
 
     if ($type != 'simple') {
         array_splice($steps, 1, 0, 'Variants');

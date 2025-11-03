@@ -21,7 +21,7 @@
                         @error('brand_id')<div class="text-danger small">{{ $message }}</div>@enderror
                     </div>
 
-                    <!-- <div class="mb-3">
+                    <div class="mb-3">
                         <label class="form-label">Product Type *</label>
                         <div class="">
                             <div class="form-check">
@@ -37,7 +37,7 @@
                                 <label class="form-check-label" for="typeBundled">Bundled - Multiple products sold together</label>
                             </div>
                         </div>
-                    </div> -->
+                    </div>
 
                     <div class="mb-3">
                         <label class="form-label">Tags *</label>

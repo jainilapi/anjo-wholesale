@@ -111,8 +111,7 @@ class ProductController extends Controller
 
         if (empty($id)) {
             $product = Product::create([
-                'name' => 'Untitled Product',
-                'type' => 'variable'
+                'name' => 'Untitled Product'
             ]);
 
             return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt($step), 'id' => encrypt($product->id)]);

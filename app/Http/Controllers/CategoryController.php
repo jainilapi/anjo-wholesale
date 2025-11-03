@@ -85,11 +85,13 @@ class CategoryController extends Controller
             'tags' => 'nullable|array',
             'tags.*' => 'nullable|string|max:100',
             'description' => 'nullable|string',
-            'status' => 'nullable|boolean'
+            'status' => 'nullable|boolean',
+            'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048'
         ]);
 
         DB::beginTransaction();
         try {
+
             $data = [
                 'name' => $request->string('name'),
                 'parent_id' => $request->input('parent_id'),
@@ -97,6 +99,17 @@ class CategoryController extends Controller
                 'description' => $request->input('description'),
                 'status' => (bool) $request->input('status', true),
             ];
+
+            $destinationPath = storage_path('app/public/categories');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                $data['logo'] = 'IMG-' . date('YmdHis-') .  $file->getClientOriginalName() . '.' . $file->getClientOriginalExtension();
+                $file->move($destinationPath, $data['logo']);
+            }
 
             Category::create($data);
             DB::commit();
@@ -154,6 +167,17 @@ class CategoryController extends Controller
                 'description' => $request->input('description'),
                 'status' => (bool) $request->input('status', false),
             ];
+
+            $destinationPath = storage_path('app/public/categories');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                $data['logo'] = 'IMG-' . date('YmdHis-') .  $file->getClientOriginalName() . '.' . $file->getClientOriginalExtension();
+                $file->move($destinationPath, $data['logo']);
+            }
 
             $category->update($data);
             DB::commit();
