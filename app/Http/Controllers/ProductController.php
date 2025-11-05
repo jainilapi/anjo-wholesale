@@ -124,18 +124,28 @@ class ProductController extends Controller
         $product = Product::find($id);
 
         if ($request->method() == 'GET') {
-            return view("products/{$type}/step-{$step}", compact('product', 'step', 'type'));
-        } else {
             if ($type == 'simple') {
-                return SimpleProductController::index($request, $step, $id);
+                return SimpleProductController::view($product, $step, $type);
             }
 
             if ($type == 'variable') {
-                return VariableProductController::index($request, $step, $id);
+                return VariableProductController::view($product, $step, $type);
             }
 
             if ($type == 'bundled') {
-                return BundledProductController::index($request, $step, $id);
+                return BundledProductController::view($product, $step, $type);
+            }
+        } else {
+            if ($type == 'simple') {
+                return SimpleProductController::store($request, $step, $id, $type);
+            }
+
+            if ($type == 'variable') {
+                return VariableProductController::store($request, $step, $id);
+            }
+
+            if ($type == 'bundled') {
+                return BundledProductController::store($request, $step, $id);
             }
         }
     }

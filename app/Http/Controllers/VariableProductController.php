@@ -13,7 +13,15 @@ use App\Models\Brand;
 
 class VariableProductController extends Controller
 {
-    public static function index($request, $step, $id) {
+    public static function view($product, $step, $type) {
+        $product = Product::findOrFail($product->id);
+                
+        return view("products/{$type}/step-{$step}", compact(
+            'product', 'step', 'type'
+        ));
+    }
+
+    public static function store($request, $step, $id) {
         switch ($step) {
             case 1:
                 $request->validate([
