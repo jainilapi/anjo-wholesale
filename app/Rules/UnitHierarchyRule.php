@@ -80,7 +80,7 @@ class UnitHierarchyRule implements ValidationRule
                     }
                 }
             } else {
-                if (empty($unit['parent_id'])) {
+                if (empty($unit['parent_id']) && $i != 1) {
                     $errors[] = "Unit at position " . ($i + 1) . " must reference a parent unit";
                 }
             }

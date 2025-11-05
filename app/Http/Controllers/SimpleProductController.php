@@ -6,10 +6,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Models\ProductImage;
 use App\Models\BrandProduct;
-use App\Models\Category;
-use App\Helpers\Helper;
 use App\Models\Product;
-use App\Models\Brand;
+use Illuminate\Support\Facades\Log;
 use App\Models\Unit;
 use App\Models\ProductBaseUnit;
 use App\Models\ProductAdditionalUnit;
@@ -238,7 +236,7 @@ class SimpleProductController extends Controller
             
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
-            \Log::warning('Unit configuration validation failed', [
+            Log::warning('Unit configuration validation failed', [
                 'product_id' => $id,
                 'errors' => $e->errors(),
                 'input' => $request->all()
@@ -247,7 +245,7 @@ class SimpleProductController extends Controller
                 ->with('error', 'Please fix the validation errors and try again.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Unit configuration save failed', [
+            Log::error('Unit configuration save failed', [
                 'product_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
