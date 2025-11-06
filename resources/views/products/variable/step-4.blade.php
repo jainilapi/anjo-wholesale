@@ -46,7 +46,15 @@
 @endpush
 
 @php
-$defaultVariant = $defaultVariantUnit = [];
+$finalVariants = $finalVariantsInfo = [];
+foreach ($product->variants as $variant) {
+    $temp = $variant->additionalUnits()->with('unit')->get()->toArray();
+    $baseUn = $variant->baseUnit()->with('unit')->first()->toArray();
+
+    array_unshift($temp, $baseUn);
+    $finalVariants[] = $temp;
+    $finalVariantsInfo[] = $variant;
+}
 @endphp
 
 @section('product-content')
@@ -55,64 +63,54 @@ $defaultVariant = $defaultVariantUnit = [];
         <label for="variant"> Select Variant </label>
         <select name="variant" id="variant" class="form-control">
             @foreach($product->variants as $variant)
-            @php
-                $units = $variant->additionalUnits()->with('unit')->get()->toArray();
-                $baseUn = $variant->baseUnit()->with('unit')->first()->toArray();
-
-                array_unshift($units, $baseUn);
-
-                if ($loop->first) {
-                    $defaultVariantUnit = $units;
-                    $defaultVariant = $variant;
-                }
-            @endphp
-
-            <option value="{{ $variant->id }}" data-units="{{ json_encode($units)  }}" @if($loop->first) selected @endif> {{ $variant->name }} - {{ $variant->sku }} </option>
+            <option value="{{ $variant->id }}" @if($loop->first) selected @endif> {{ $variant->name }} - {{ $variant->sku }} </option>
             @endforeach
         </select>
 
         <div id="pricing-matrix" class="mt-4">
-            <div class="mt-4">
-                <h3 id="titleOfCurrentTabUnit">{{ $defaultVariantUnit[0]['unit']['title'] ?? 'N/A' }} Pricing Tiers</h3>
-                <p>Set quantity-based pricing for individual {{ $defaultVariantUnit[0]['unit']['title'] ?? 'N/A' }}</p>
+            @foreach ($finalVariants as $variant)
+                <div class="mt-4 main-visibility-container @if($loop->first) d-none @endif" data-current-unit-id="{{ $finalVariantsInfo[$loop->iteration - 1]['id'] }}">
+                    <h3 class="titleOfCurrentTabUnit">{{ $variant[0]['unit']['title'] ?? 'N/A' }} Pricing Tiers</h3>
+                    <p>Set quantity-based pricing for individual <span class="titleOfCurrentTabUnit"> {{ $variant[0]['unit']['title'] ?? 'N/A' }} </span> </p>
 
-                <ul class="nav nav-tabs" id="pricingTabs" role="tablist">
-                    @foreach ($defaultVariantUnit as $row)
-                        @php
-                        $tabId = md5($row['id']);
-                        @endphp
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link @if($loop->first) active @endif" id="{{ $tabId }}-tab" data-current-unit="{{ $row['unit']['title'] ?? 'N/A' }}" data-bs-toggle="tab" href="#{{ $tabId }}" role="tab" aria-controls="{{ $tabId }}" aria-selected="true">{{ $row['unit']['title'] ?? 'N/A' }} @if($loop->first) (Base Unit) @endif </a>
-                    </li>
-                    @endforeach
-                </ul>
+                    <ul class="nav nav-tabs" role="tablist">
+                        @foreach ($variant as $row)
+                            @php
+                            $tabId = md5($row['id'] . '-' . $row['varient_id']);
+                            @endphp
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link @if($loop->first) active @endif" id="{{ $tabId }}-tab" data-current-unit="{{ $row['unit']['title'] ?? 'N/A' }}" data-bs-toggle="tab" href="#{{ $tabId }}" role="tab" aria-controls="{{ $tabId }}" aria-selected="true">{{ $row['unit']['title'] ?? 'N/A' }} @if($loop->first) (Base Unit) @endif </a>
+                        </li>
+                        @endforeach
+                    </ul>
 
-                <div class="tab-content">
-                    @foreach ($defaultVariantUnit as $row)
-                        @php
-                        $tabId = md5($row['id']);
-                        @endphp
-                    <div class="tab-pane fade @if($loop->first) show active @endif" id="{{ $tabId }}" role="tabpanel" aria-labelledby="{{ $tabId }}-tab">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Min Quantity</th>
-                                    <th>Max Quantity</th>
-                                    <th>Price per Unit</th>
-                                    <th>Discount %</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            </tbody>
-                        </table>
-                        <div class="add-row-btn">
-                            <button type="button" class="btn btn-primary addANewLevel">+ Add New Pricing Tier</button>
+                    <div class="tab-content">
+                        @foreach ($variant as $row)
+                            @php
+                            $tabId = md5($row['id'] . '-' . $row['varient_id']);
+                            @endphp
+                        <div class="tab-pane fade @if($loop->first) show active @endif" id="{{ $tabId }}" role="tabpanel" aria-labelledby="{{ $tabId }}-tab">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Min Quantity</th>
+                                        <th>Max Quantity</th>
+                                        <th>Price per Unit</th>
+                                        <th>Discount %</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                            <div class="add-row-btn">
+                                <button type="button" class="btn btn-primary addANewLevel">+ Add New Pricing Tier</button>
+                            </div>
                         </div>
+                        @endforeach
                     </div>
-                    @endforeach
                 </div>
-            </div>
+            @endforeach
         </div>
     </div>
 </div>
@@ -128,6 +126,16 @@ $defaultVariant = $defaultVariantUnit = [];
             placeholder: 'Select Variant',
             allowClear: true,
             width: '100%'
+        }).on('change', function () {
+            let variantId = $('option:selected', this).val();
+            
+            $('.main-visibility-container').addClass('d-none');
+            
+            $('.main-visibility-container').each(function() {
+                if ($(this).data('current-unit-id') == variantId) {
+                    $(this).removeClass('d-none');
+                }
+            });
         });
 
     function addRow(element) {
@@ -166,9 +174,9 @@ $defaultVariant = $defaultVariantUnit = [];
         });
     });
 
-    $(document).on('shown.bs.tab', '#pricingTabs a', function (e) {
+    $(document).on('shown.bs.tab', '.nav-tabs a', function (e) {
         var targetTab = $(e.target).data('current-unit');
-        $('#titleOfCurrentTabUnit').text(`${targetTab} Pricing Tiers`);
+        $(e.target).parent().parent().parent().find('.titleOfCurrentTabUnit').text(`${targetTab} Pricing Tiers`);
     });
 
     });

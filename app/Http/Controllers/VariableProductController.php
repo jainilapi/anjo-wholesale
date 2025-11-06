@@ -314,8 +314,9 @@ class VariableProductController extends Controller
             case 3:
 
             case 4:
+                $product = Product::findOrFail($id);
 
-                // 
+
 
             case 5:
 
