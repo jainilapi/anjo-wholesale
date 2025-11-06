@@ -10,4 +10,12 @@ class ProductVarient extends Model
     use SoftDeletes;
 
     protected $guarded = [];
+
+    public function baseUnit() {
+        return $this->hasOne(ProductBaseUnit::class, 'varient_id');
+    }
+
+    public function additionalUnits() {
+        return $this->hasMany(ProductAdditionalUnit::class, 'varient_id');
+    }
 }
