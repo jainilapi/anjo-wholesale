@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Unit;
 use App\Models\ProductBaseUnit;
 use App\Models\ProductAdditionalUnit;
+use App\Models\ProductTierPricing;
+use App\Models\ProductVarient;
 use App\Rules\UnitHierarchyRule;
 use App\Rules\DefaultSellingUnitRule;
 
@@ -315,8 +317,98 @@ class VariableProductController extends Controller
 
             case 4:
                 $product = Product::findOrFail($id);
+                $payload = $request->input('tier_pricings');
+                $items = [];
+                if ($payload) {
+                    try {
+                        $decoded = is_array($payload) ? $payload : json_decode($payload, true);
+                        if (is_array($decoded)) {
+                            $items = $decoded;
+                        }
+                    } catch (\Throwable $th) {
+                    }
+                }
 
+                $request->merge(['_tier_items' => $items]);
 
+                $request->validate([
+                    '_tier_items' => 'required|array|min:1',
+                    '_tier_items.*.product_varient_id' => 'required|integer|exists:product_varients,id',
+                    '_tier_items.*.product_additional_unit_id' => 'required|integer',
+                    '_tier_items.*.min_qty' => 'required|numeric|min:1',
+                    '_tier_items.*.max_qty' => 'nullable|numeric',
+                    '_tier_items.*.price_per_unit' => 'required|numeric|min:0.01',
+                    '_tier_items.*.discount_type' => 'required|in:0,1',
+                    '_tier_items.*.discount_amount' => 'nullable|numeric|min:0',
+                ]);
+
+                foreach ($items as $index => $row) {
+                    $variant = ProductVarient::where('product_id', $product->id)->where('id', $row['product_varient_id'] ?? 0)->first();
+                    if (!$variant) {
+                        return back()->withInput()->withErrors(["_tier_items.$index.product_varient_id" => 'Invalid variant for this product']);
+                    }
+
+                    $unitRowId = $row['product_additional_unit_id'] ?? 0;
+                    $belongs = ProductAdditionalUnit::where('product_id', $product->id)->where('id', $unitRowId)->exists()
+                        || ProductBaseUnit::where('product_id', $product->id)->where('id', $unitRowId)->exists();
+                    if (!$belongs) {
+                        return back()->withInput()->withErrors(["_tier_items.$index.product_additional_unit_id" => 'Invalid unit selection for this product']);
+                    }
+
+                    if ((int)($row['discount_type'] ?? 1) === 1) {
+                        $percent = (float)($row['discount_amount'] ?? 0);
+                        if ($percent < 0 || $percent > 100) {
+                            return back()->withInput()->withErrors(["_tier_items.$index.discount_amount" => 'Discount percentage must be between 0 and 100']);
+                        }
+                    }
+                }
+
+                $grouped = [];
+                foreach ($items as $row) {
+                    $key = ($row['product_varient_id'] ?? '0') . '-' . ($row['product_additional_unit_id'] ?? '0');
+                    $grouped[$key][] = $row;
+                }
+
+                foreach ($grouped as $key => $rows) {
+                    usort($rows, function ($a, $b) {
+                        return ($a['min_qty'] ?? 0) <=> ($b['min_qty'] ?? 0);
+                    });
+                    $prevMax = 0;
+                    foreach ($rows as $i => $r) {
+                        $min = (float)($r['min_qty'] ?? 0);
+                        $max = array_key_exists('max_qty', $r) && $r['max_qty'] !== null && $r['max_qty'] !== '' ? (float)$r['max_qty'] : null;
+                        if ($min <= $prevMax) {
+                            return back()->withInput()->withErrors(['tier_pricings' => 'Overlapping or unordered ranges detected.']);
+                        }
+                        if ($max !== null && $max <= $min) {
+                            return back()->withInput()->withErrors(['tier_pricings' => 'Max quantity must be greater than min quantity.']);
+                        }
+                        $prevMax = $max === null ? PHP_INT_MAX : $max;
+                    }
+                }
+
+                try {
+                    DB::beginTransaction();
+                    ProductTierPricing::where('product_id', $product->id)->delete();
+                    foreach ($items as $r) {
+                        ProductTierPricing::create([
+                            'product_id' => $product->id,
+                            'product_varient_id' => (int)$r['product_varient_id'],
+                            'product_additional_unit_id' => (int)$r['product_additional_unit_id'],
+                            'min_qty' => (float)$r['min_qty'],
+                            'max_qty' => $r['max_qty'] === null || $r['max_qty'] === '' ? 0 : (float)$r['max_qty'],
+                            'price_per_unit' => (float)$r['price_per_unit'],
+                            'discount_type' => (int)$r['discount_type'],
+                            'discount_amount' => (float)($r['discount_amount'] ?? 0),
+                        ]);
+                    }
+                    DB::commit();
+                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(5), 'id' => encrypt($product->id)])
+                        ->with('success', 'Data saved successfully');
+                } catch (\Throwable $th) {
+                    DB::rollBack();
+                    return back()->withInput()->with('error', 'Failed to save pricing tiers');
+                }
 
             case 5:
 

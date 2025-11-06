@@ -90,7 +90,7 @@ foreach ($product->variants as $variant) {
                             $tabId = md5($row['id'] . '-' . $row['varient_id']);
                             @endphp
                         <div class="tab-pane fade @if($loop->first) show active @endif" id="{{ $tabId }}" role="tabpanel" aria-labelledby="{{ $tabId }}-tab">
-                            <table class="table table-bordered">
+                            <table class="table table-bordered pricing-table-instance" data-variant-id="{{ $row['varient_id'] }}" data-unit-row-id="{{ $row['id'] }}">
                                 <thead>
                                     <tr>
                                         <th>Min Quantity</th>
@@ -101,6 +101,18 @@ foreach ($product->variants as $variant) {
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    @forelse(\App\Models\ProductTierPricing::where('product_varient_id', $row['varient_id'])->where('product_additional_unit_id', $row['id'])->get() as $tier)
+                                    <tr>
+                                        <td><input type="number" class="form-control" name="min_quantity[]" value="{{ $tier->min_qty }}" min="1" step="1"></td>
+                                        <td><input type="number" class="form-control" name="max_quantity[]" value="{{ $tier->max_qty }}"></td>
+                                        <td><input type="number" class="form-control" name="price_per_unit[]" value="{{ $tier->price_per_unit }}" step="0.01"></td>
+                                        <td><input type="number" class="form-control" name="discount[]" value="{{ $tier->discount_amount }}" step="0.01"></td>
+                                        <td class="actions-btn">
+                                            <button type="button" class="btn btn-danger remove-row">Delete</button>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    @endforelse
                                 </tbody>
                             </table>
                             <div class="add-row-btn">
@@ -143,8 +155,8 @@ foreach ($product->variants as $variant) {
         <tr>
           <td><input type="number" class="form-control" name="min_quantity[]" value="1" min="1" step="1"></td>
           <td><input type="number" class="form-control" name="max_quantity[]" value="5"></td>
-          <td><input type="number" class="form-control" name="price_per_unit[]" value="0"></td>
-          <td><input type="number" class="form-control" name="discount[]" value="0"></td>
+          <td><input type="number" class="form-control" name="price_per_unit[]" value="0" step="0.01"></td>
+          <td><input type="number" class="form-control" name="discount[]" value="0" step="0.01"></td>
           <td class="actions-btn">
             <button type="button" class="btn btn-danger remove-row">Delete</button>
           </td>
@@ -177,6 +189,36 @@ foreach ($product->variants as $variant) {
     $(document).on('shown.bs.tab', '.nav-tabs a', function (e) {
         var targetTab = $(e.target).data('current-unit');
         $(e.target).parent().parent().parent().find('.titleOfCurrentTabUnit').text(`${targetTab} Pricing Tiers`);
+    });
+
+    $('#productStep1Form').on('submit', function(e) {
+        let items = [];
+        let errors = [];
+        $('.pricing-table-instance').each(function() {
+            const variantId = parseInt($(this).data('variant-id')) || null;
+            const unitRowId = parseInt($(this).data('unit-row-id')) || null;
+            $(this).find('tbody tr').each(function(index) {
+                const minQty = parseFloat($(this).find('input[name="min_quantity[]"]').val());
+                const maxQtyRaw = $(this).find('input[name="max_quantity[]"]').val();
+                const maxQty = maxQtyRaw === '' ? null : parseFloat(maxQtyRaw);
+                const price = parseFloat($(this).find('input[name="price_per_unit[]"]').val());
+                const discount = parseFloat($(this).find('input[name="discount[]"]').val());
+                if (!isNaN(minQty) || !isNaN(maxQty) || !isNaN(price) || !isNaN(discount)) {
+                    items.push({
+                        product_varient_id: variantId,
+                        product_additional_unit_id: unitRowId,
+                        min_qty: isNaN(minQty) ? null : minQty,
+                        max_qty: isNaN(maxQty) ? null : maxQty,
+                        price_per_unit: isNaN(price) ? null : price,
+                        discount_type: 1,
+                        discount_amount: isNaN(discount) ? 0 : discount
+                    });
+                }
+            });
+        });
+        $('#tier_pricings_input').remove();
+        $('<input>').attr({type:'hidden', name:'tier_pricings', id:'tier_pricings_input'})
+            .val(JSON.stringify(items)).appendTo('#productStep1Form');
     });
 
     });
