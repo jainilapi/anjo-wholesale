@@ -34,7 +34,7 @@
                                            name="base_unit_is_default_selling" value="1"
                                            {{ !$additionalUnits->where('is_default_selling_unit', 1)->count() ? 'checked' : '' }}>
                                     <label class="form-check-label" for="baseUnitDefault">
-                                        <i class="fas fa-star text-warning me-1"></i>Default Selling Unit
+                                        Default Selling Unit
                                     </label>
                                 </div>
                                 <div class="mt-1">
@@ -95,7 +95,7 @@
                                                                id="defaultSelling_{{ $index }}"
                                                                {{ ($unitData['is_default_selling_unit'] ?? false) ? 'checked' : '' }}>
                                                         <label class="form-check-label" for="defaultSelling_{{ $index }}">
-                                                            <i class="fas fa-star text-warning me-1"></i>Default Selling Unit
+                                                            Default Selling Unit
                                                         </label>
                                                     </div>
                                                     <div class="form-text">
@@ -114,7 +114,6 @@
                                             </div>
                                             <div class="conversion-formula mt-2">
                                                 <div class="d-flex align-items-center">
-                                                    <i class="fas fa-calculator text-primary me-2"></i>
                                                     <small class="text-muted conversion-text fw-bold">
                                                         @if(isset($unitData['conversion_formula']))
                                                             <i class="fas fa-equals text-primary me-1"></i>{{ $unitData['conversion_formula'] }}
@@ -158,8 +157,8 @@
 @push('product-css')
 <style>
     .conversion-formula {
-        background-color: #f8f9fa;
-        border-left: 3px solid #007bff;
+        /* background-color: #f8f9fa;
+        border-left: 3px solid #007bff; */
         padding: 8px 12px;
         border-radius: 4px;
         margin-top: 10px;
@@ -208,12 +207,12 @@
     }
     
     .default-selling-toggle:checked {
-        background-color: #ffc107;
-        border-color: #ffc107;
+        background-color: #203c70;
+        border-color: #203c70;
     }
     
     .default-selling-toggle:checked:focus {
-        box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+        box-shadow: 0 0 0 0.25rem #5376b6ff;
     }
     
     .form-check-label .fas.fa-star {
@@ -221,8 +220,8 @@
     }
     
     .default-selling-toggle:checked + .form-check-label .fas.fa-star {
-        color: #ffc107 !important;
-        text-shadow: 0 0 3px rgba(255, 193, 7, 0.5);
+        color: #203c70 !important;
+        text-shadow: 0 0 3px #5376b6ff;
     }
 </style>
 @endpush
@@ -554,7 +553,7 @@
             </div>
         `);
         
-        $('.card-body').prepend(alert);
+        //$('.card-body').prepend(alert);
         
         setTimeout(function() {
             alert.fadeOut();
@@ -609,7 +608,7 @@
             });
             
             const $label = $toggle.next('label');
-            $label.addClass('fw-bold text-warning');
+            $label.addClass('fw-bold text-primary');
             setTimeout(function() {
                 $label.removeClass('fw-bold');
             }, 2000);
@@ -652,15 +651,15 @@
             const $row = $toggle.closest('.unit-row, .form-text');
             
             if ($toggle.prop('checked')) {
-                $label.addClass('text-warning');
-                $row.addClass('border-warning');
+                $label.addClass('text-primary');
+                $row.addClass('border-primary');
                 
                 if (!$label.find('.badge').length) {
-                    $label.append(' <span class="badge bg-warning text-dark ms-1">Active</span>');
+                    $label.append(' <span class="badge bg-success ms-1">Active</span>');
                 }
             } else {
-                $label.removeClass('text-warning fw-bold');
-                $row.removeClass('border-warning');
+                $label.removeClass('text-primary fw-bold');
+                $row.removeClass('border-primary');
                 
                 $label.find('.badge').remove();
             }
@@ -699,7 +698,7 @@
                      '<span class="alert-message"></span>' +
                      '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
                      '</div>');
-            $('.card-body').prepend(alert);
+            //$('.card-body').prepend(alert);
         }
         
         alert.find('.alert-message').text(message);
@@ -817,7 +816,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             `);
-            $('.card-body').prepend(alert);
+            //$('.card-body').prepend(alert);
         }
         
         const errorList = errors.slice(0, 3).map(error => `<li>${error}</li>`).join('');
@@ -924,7 +923,7 @@
                                    name="additional_units[${index}][is_default_selling_unit]" value="1"
                                    id="defaultSelling_${index}">
                             <label class="form-check-label" for="defaultSelling_${index}">
-                                <i class="fas fa-star text-warning me-1"></i>Default Selling Unit
+                                Default Selling Unit
                             </label>
                         </div>
                         <div class="form-text">
@@ -943,7 +942,6 @@
                 </div>
                 <div class="conversion-formula mt-2">
                     <div class="d-flex align-items-center">
-                        <i class="fas fa-calculator text-primary me-2"></i>
                         <small class="text-muted conversion-text fw-bold"></small>
                     </div>
                     <div class="conversion-details mt-1" style="display: none;">
@@ -993,7 +991,7 @@
         
         const isUsed = isUnitAlreadySelected(unit.id);
         const usageClass = isUsed ? 'text-muted' : '';
-        const usageIcon = isUsed ? '<i class="fas fa-exclamation-triangle text-warning me-1"></i>' : '';
+        const usageIcon = isUsed ? '<i class="fas fa-exclamation-triangle text-primary me-1"></i>' : '';
         
         return $(`<span class="${usageClass}">${usageIcon}${unit.text}</span>`);
     }
@@ -1245,7 +1243,7 @@
             const quantityNum = parseFloat(quantity);
             
             if (isNaN(quantityNum) || quantityNum <= 0) {
-                formulaElement.html('<i class="fas fa-exclamation-triangle text-warning me-1"></i>Invalid quantity - must be greater than 0');
+                formulaElement.html('<i class="fas fa-exclamation-triangle text-primary me-1"></i>Invalid quantity - must be greater than 0');
                 detailsContainer.hide();
                 return;
             }
@@ -1262,14 +1260,14 @@
                     
                     breakdown = buildConversionBreakdown(row, totalBaseUnits, baseUnitText);
                 } else if (totalBaseUnits === null) {
-                    formula += ' = <span class="text-warning">Configure parent units first</span>';
+                    formula += ' = <span class="text-primary">Configure parent units first</span>';
                 }
             }
             
             formulaElement.html(`<i class="fas fa-equals text-primary me-1"></i>${formula}`);
             
             if (breakdown) {
-                breakdownElement.html(`<i class="fas fa-calculator me-1"></i>${breakdown}`);
+                breakdownElement.html(`${breakdown}`);
                 detailsContainer.show();
             } else {
                 detailsContainer.hide();
@@ -1285,7 +1283,7 @@
                 message += 'Configure parent unit to see conversion';
             }
             
-            formulaElement.html(message);
+            // formulaElement.html(message);
             detailsContainer.hide();
         }
     }
@@ -1558,7 +1556,7 @@
                      '<span class="alert-message"></span>' +
                      '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
                      '</div>');
-            $('.card-body').prepend(alert);
+            //$('.card-body').prepend(alert);
         }
         
         alert.find('.alert-message').text(message);
