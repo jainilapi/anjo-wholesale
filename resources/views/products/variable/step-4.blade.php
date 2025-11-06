@@ -141,9 +141,9 @@ foreach ($product->variants as $variant) {
     function addRow(element) {
       var newRow = `
         <tr>
-          <td><input type="number" class="form-control" name="min_quantity[]" value="1"></td>
-          <td><input type="number" class="form-control" name="max_quantity[]" value="99"></td>
-          <td><input type="number" class="form-control" name="price_per_unit[]" value="2.50"></td>
+          <td><input type="number" class="form-control" name="min_quantity[]" value="1" min="1" step="1"></td>
+          <td><input type="number" class="form-control" name="max_quantity[]" value="5"></td>
+          <td><input type="number" class="form-control" name="price_per_unit[]" value="0"></td>
           <td><input type="number" class="form-control" name="discount[]" value="0"></td>
           <td class="actions-btn">
             <button type="button" class="btn btn-danger remove-row">Delete</button>
