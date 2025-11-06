@@ -39,4 +39,9 @@ class Product extends Model
     {
         return $this->belongsToMany(Brand::class, 'brand_product', 'product_id', 'brand_id');
     }
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVarient::class, 'product_id');
+    }
 }

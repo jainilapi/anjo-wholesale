@@ -6,22 +6,49 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Models\ProductImage;
 use App\Models\BrandProduct;
-use App\Models\Category;
-use App\Helpers\Helper;
 use App\Models\Product;
-use App\Models\Brand;
+use Illuminate\Support\Facades\Log;
+use App\Models\Unit;
+use App\Models\ProductBaseUnit;
+use App\Models\ProductAdditionalUnit;
+use App\Rules\UnitHierarchyRule;
+use App\Rules\DefaultSellingUnitRule;
 
 class VariableProductController extends Controller
 {
-    public static function view($product, $step, $type) {
+    public static function view($product, $step, $type)
+    {
         $product = Product::findOrFail($product->id);
-                
+
+        $availableUnits = Unit::select('id', 'title')->get();
+
+        $baseUnit = ProductBaseUnit::where('product_id', $product->id)
+            ->with('unit')
+            ->first();
+
+        $additionalUnits = ProductAdditionalUnit::where('product_id', $product->id)
+            ->with(['unit', 'parent'])
+            ->orderBy('parent_id')
+            ->get();
+
+        $unitHierarchy = self::buildUnitHierarchy($additionalUnits, $baseUnit);
+
+        $units = Unit::get();
+
         return view("products/{$type}/step-{$step}", compact(
-            'product', 'step', 'type'
+            'product',
+            'availableUnits',
+            'baseUnit',
+            'additionalUnits',
+            'unitHierarchy',
+            'step',
+            'type',
+            'units'
         ));
     }
 
-    public static function store($request, $step, $id) {
+    public static function store($request, $step, $id, $type = 'variable')
+    {
         switch ($step) {
             case 1:
                 $request->validate([
@@ -106,7 +133,7 @@ class VariableProductController extends Controller
                             \App\Models\ProductVarient::where('product_id', $product->id)->delete();
 
                             $grouped = [];
-                            
+
                             foreach ($request->input('attributes') as $attr) {
                                 $title = trim($attr['title']);
                                 $vals = array_values(array_filter(array_map('trim', $attr['values'])));
@@ -150,8 +177,10 @@ class VariableProductController extends Controller
                                     $a = \App\Models\ProductAttribute::find($aid);
                                     if ($a) $parts[] = $a->value;
                                 }
-                                $name = trim(($product->name ?: 'Product Name'). ' - ' . implode(' / ', $parts));
-                                $skuSuffix = strtoupper(implode('-', array_map(function ($p) { return substr(preg_replace('/[^A-Za-z0-9]/','', $p), 0, 2); }, $parts)));
+                                $name = trim(($product->name ?: 'Product Name') . ' - ' . implode(' / ', $parts));
+                                $skuSuffix = strtoupper(implode('-', array_map(function ($p) {
+                                    return substr(preg_replace('/[^A-Za-z0-9]/', '', $p), 0, 2);
+                                }, $parts)));
                                 $sku = sprintf('PRD-%s-%03d', $skuSuffix ?: 'VAR', $counter);
                                 $variant = \App\Models\ProductVarient::create([
                                     'product_id' => $product->id,
@@ -228,14 +257,14 @@ class VariableProductController extends Controller
                         ]);
                         $variant = \App\Models\ProductVarient::where('product_id', $product->id)->findOrFail($request->id);
                         $path = $request->file('file')->store('products/variants', 'public');
-                        \App\Models\ProductVarientImage::where('product_id', $product->id)->where('varient_id', $variant->id)->where('is_primary',1)->delete();
+                        \App\Models\ProductVarientImage::where('product_id', $product->id)->where('varient_id', $variant->id)->where('is_primary', 1)->delete();
                         $img = \App\Models\ProductVarientImage::create([
                             'product_id' => $product->id,
                             'varient_id' => $variant->id,
                             'is_primary' => 1,
                             'file' => $path,
                         ]);
-                        return response()->json(['url' => asset('storage/'.$img->file)]);
+                        return response()->json(['url' => asset('storage/' . $img->file)]);
                     }
 
                     if ($request->op === 'generate-barcodes') {
@@ -263,7 +292,7 @@ class VariableProductController extends Controller
                             if (!empty($attrIds)) {
                                 $parts = \App\Models\ProductAttribute::whereIn('id', $attrIds)->pluck('value')->toArray();
                             }
-                            $img = \App\Models\ProductVarientImage::where('product_id', $product->id)->where('varient_id', $v->id)->where('is_primary',1)->first();
+                            $img = \App\Models\ProductVarientImage::where('product_id', $product->id)->where('varient_id', $v->id)->where('is_primary', 1)->first();
                             $items[] = [
                                 'id' => $v->id,
                                 'name' => $v->name,
@@ -271,7 +300,7 @@ class VariableProductController extends Controller
                                 'barcode' => $v->barcode,
                                 'status' => (bool)$v->status,
                                 'attributes' => $parts,
-                                'image' => $img ? asset('storage/'.$img->file) : null,
+                                'image' => $img ? asset('storage/' . $img->file) : null,
                             ];
                         }
                         return response()->json(['items' => $items]);
@@ -280,191 +309,70 @@ class VariableProductController extends Controller
                     return response()->json(['message' => 'Unknown operation'], 422);
                 }
 
-                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(3), 'id' => encrypt($product->id)])
-                        ->with('success', 'Data saved successfully');
+                return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(4), 'id' => encrypt($product->id)])
+                    ->with('success', 'Data saved successfully');
             case 3:
-                $product = Product::findOrFail($id);
-                if ($request->ajax()) {
-                    $request->validate(['op' => 'required|string']);
-                    if($request->op === 'fetch-variants-units-tree') {
-                        $variants = \App\Models\ProductVarient::where('product_id', $product->id)->get();
-                        $results = [];
-                        foreach ($variants as $variant) {
-                            $baseUnitRow = \App\Models\ProductBaseUnit::where('product_id', $product->id)->where('varient_id', $variant->id)->first();
-                            $baseUnit = $baseUnitRow ? [
-                                'id' => $baseUnitRow->unit_id,
-                                'label' => (\App\Models\Unit::find($baseUnitRow->unit_id)?->title) ?? '',
-                                'is_default' => true,
-                            ] : null;
-                            $adds = \App\Models\ProductAdditionalUnit::where('product_id',$product->id)->where('varient_id',$variant->id)->orderBy('id')->get();
-                            $unitMap = [];
-                            foreach($adds as $add) {
-                                $unitMap[$add->id] = [
-                                    'id' => $add->id,
-                                    'unit_id' => $add->unit_id,
-                                    'qty' => $add->quantity,
-                                    'parent_id' => $add->parent_id,
-                                    'is_default' => (bool)$add->is_default_selling_unit,
-                                    'unit' => [
-                                        'label' => (\App\Models\Unit::find($add->unit_id)?->title) ?? ''
-                                    ],
-                                ];
-                            }
-                            foreach ($unitMap as $uid => &$unit) { $unit['children'] = array_filter($unitMap, fn($x) => $x['parent_id']===$uid); }
-                            unset($unit);
-                            $results[] = [ 'id' => $variant->id, 'name' => $variant->name, 'base_unit' => $baseUnit, 'additional_units' => array_values($unitMap) ];
-                        }
-                        return response()->json(['variants'=>$results]);
-                    }
-                    if($request->op === 'set-base') {
-                        $request->validate([
-                            'variant_id' => 'required|integer|exists:product_varients,id',
-                            'unit_id' => 'required|integer|exists:units,id',
-                        ]);
-                        $variant = \App\Models\ProductVarient::where('product_id',$product->id)->findOrFail($request->variant_id);
-                        \App\Models\ProductBaseUnit::updateOrCreate(
-                            ['product_id'=>$product->id,'varient_id'=>$variant->id],
-                            ['unit_id'=>(int)$request->unit_id]
-                        );
-                        return response()->json(['success'=>true]);
-                    }
-                    if($request->op === 'unit-list') {
-                        $query = \App\Models\Unit::query();
-                        $searchQuery = $request->input('searchQuery','');
-                        if($searchQuery) {
-                            $query->where(function($q)use($searchQuery){$q->where('title','like',"%$searchQuery%") ->orWhere('text','like',"%$searchQuery% ");});}
-                        $units = $query->limit(10)->get();
-                        $data = $units->map(fn($u)=>['id'=>$u->id, 'text'=>$u->title]);
-                        return response()->json(['items'=>$data, 'pagination'=>['more'=>false]]);
-                    }
-                    if($request->op === 'add-additional') {
-                        $request->validate([
-                            'variant_id'=>'required|integer|exists:product_varients,id',
-                            'unit_id'=>'required|integer|exists:units,id',
-                            'qty'=>'required|numeric|min:1',
-                            'parent_id'=>'nullable|integer|exists:product_additional_units,id'
-                        ]);
-                        $variantId = $request->variant_id;
-                        $parent = $request->parent_id ? \App\Models\ProductAdditionalUnit::find($request->parent_id) : null;
-                        // Only one child allowed
-                        if($parent) {
-                            $hasChild = \App\Models\ProductAdditionalUnit::where('parent_id', $parent->id)->exists();
-                            if($hasChild) return response()->json(['success'=>false, 'message'=>'This unit already has a child.']);
-                        }
-                        // Prevent same unit_id under same parent/branch for this variant
-                        $branchIds = collect([$request->parent_id]);
-                        while($branchIds->last()) {
-                            $anc = \App\Models\ProductAdditionalUnit::find($branchIds->last());
-                            $branchIds->push($anc?$anc->parent_id:null);
-                        }
-                        if(in_array($request->unit_id, $branchIds->toArray())) return response()->json(['success'=>false,'message'=>'Cyclic unit structure not allowed.']);
-                        $row = \App\Models\ProductAdditionalUnit::create([
-                            'product_id'=>$product->id,
-                            'varient_id'=>$variantId,
-                            'unit_id'=>$request->unit_id,
-                            'quantity'=>$request->qty,
-                            'parent_id'=>$request->parent_id,
-                            'is_default_selling_unit'=>0,
-                        ]);
-                        return response()->json(['success'=>true]);
-                    }
-                    if($request->op === 'update-additional-qty') {
-                        $request->validate(['id'=>'required|integer|exists:product_additional_units,id','qty'=>'required|numeric|min:1']);
-                        $row = \App\Models\ProductAdditionalUnit::findOrFail($request->id);
-                        $row->quantity = $request->quantity;
-                        $row->save();
-                        return response()->json(['success'=>true]);
-                    }
-                    if($request->op === 'toggle-default') {
-                        $request->validate(['id'=>'required|integer|exists:product_additional_units,id','value'=>'required|boolean']);
-                        $row = \App\Models\ProductAdditionalUnit::findOrFail($request->id);
-                        // Only one default per variant
-                        \App\Models\ProductAdditionalUnit::where('varient_id',$row->varient_id)->where('product_id',$row->product_id)->update(['is_default_selling_unit'=>0]);
-                        $row->is_default_selling_unit = $request->value ? 1 : 0;
-                        $row->save();
-                        return response()->json(['success'=>true]);
-                    }
-                    if($request->op==='delete-additional') {
-                        $request->validate(['id'=>'required|integer|exists:product_additional_units,id']);
-                        // Delete this additional unit and any children recursively
-                        $toDelete = [$request->id];
-                        $queue = [$request->id];
-                        while($queue) {
-                            $par = array_shift($queue);
-                            $chs = \App\Models\ProductAdditionalUnit::where('parent_id',$par)->pluck('id')->toArray();
-                            foreach($chs as $cid) { $toDelete[]=$cid; $queue[]=$cid; }
-                        }
-                        \App\Models\ProductAdditionalUnit::whereIn('id',$toDelete)->delete();
-                        return response()->json(['success'=>true]);
-                    }
-                }
 
-                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(4), 'id' => encrypt($product->id)])
-                        ->with('success', 'Data saved successfully');
             case 4:
 
-        try {
-            DB::beginTransaction();
+                // 
 
-            // Get or create product
-            $product = Product::findOrFail($id);
-
-            // Update product promotional and SEO settings
-            $product->update([
-                'should_feature_on_home_page' => $request->input('should_feature_on_home_page', 0),
-                'is_new_product' => $request->input('is_new_product', 0),
-                'is_best_seller' => $request->input('is_best_seller', 0),
-                'seo_title' => $request->input('seo_title'),
-                'seo_description' => $request->input('seo_description'),
-                'in_draft' => $request->input('action') === 'save_draft' ? 1 : 0,
-            ]);
-
-            // Clear existing categories
-            \App\Models\ProductCategory::where('product_id', $product->id)->delete();
-
-            // Save primary category
-            \App\Models\ProductCategory::create([
-                'product_id' => $product->id,
-                'category_id' => $request->input('primary_category'),
-                'is_primary' => 1,
-            ]);
-
-            // Save additional categories
-            if ($request->has('additional_categories')) {
-                $additionalCategories = array_diff(
-                    $request->input('additional_categories'),
-                    [$request->input('primary_category')]
-                );
-
-                foreach ($additionalCategories as $categoryId) {
-                    \App\Models\ProductCategory::create([
-                        'product_id' => $product->id,
-                        'category_id' => $categoryId,
-                        'is_primary' => 0,
-                    ]);
-                }
-            }
-
-            DB::commit();
-
-                return redirect()
-                    ->route('products.index')
-                    ->with('success', 'Data saved successfully');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            
-            return redirect()
-                ->back()
-                ->withInput()
-                ->with('error', 'Failed to save product: ' . $e->getMessage());
-        }
             case 5:
 
                 break;
             case 6:
 
-                break;
+                try {
+                    DB::beginTransaction();
+
+                    $product = Product::findOrFail($id);
+
+                    $product->update([
+                        'should_feature_on_home_page' => $request->input('should_feature_on_home_page', 0),
+                        'is_new_product' => $request->input('is_new_product', 0),
+                        'is_best_seller' => $request->input('is_best_seller', 0),
+                        'seo_title' => $request->input('seo_title'),
+                        'seo_description' => $request->input('seo_description'),
+                        'in_draft' => $request->input('action') === 'save_draft' ? 1 : 0,
+                    ]);
+
+                    \App\Models\ProductCategory::where('product_id', $product->id)->delete();
+
+                    \App\Models\ProductCategory::create([
+                        'product_id' => $product->id,
+                        'category_id' => $request->input('primary_category'),
+                        'is_primary' => 1,
+                    ]);
+
+                    if ($request->has('additional_categories')) {
+                        $additionalCategories = array_diff(
+                            $request->input('additional_categories'),
+                            [$request->input('primary_category')]
+                        );
+
+                        foreach ($additionalCategories as $categoryId) {
+                            \App\Models\ProductCategory::create([
+                                'product_id' => $product->id,
+                                'category_id' => $categoryId,
+                                'is_primary' => 0,
+                            ]);
+                        }
+                    }
+
+                    DB::commit();
+
+                    return redirect()
+                        ->route('products.index')
+                        ->with('success', 'Data saved successfully');
+                } catch (\Exception $e) {
+                    DB::rollBack();
+
+                    return redirect()
+                        ->back()
+                        ->withInput()
+                        ->with('error', 'Failed to save product: ' . $e->getMessage());
+                }
+
             case 7:
 
                 break;
@@ -474,4 +382,357 @@ class VariableProductController extends Controller
         }
     }
 
+    private static function buildUnitHierarchy($additionalUnits, $baseUnit)
+    {
+        $hierarchy = [];
+
+        foreach ($additionalUnits as $unit) {
+            $conversion = self::calculateConversion($unit, $baseUnit, $additionalUnits);
+            $hierarchy[] = [
+                'id' => $unit->id,
+                'unit_id' => $unit->unit->id,
+                'unit_name' => $unit->unit->title,
+                'quantity' => $unit->quantity,
+                'parent_name' => $unit->parent ? $unit->parent->unit->title : ($baseUnit ? $baseUnit->unit->title : ''),
+                'conversion_formula' => $conversion['formula'],
+                'total_base_units' => $conversion['total'],
+                'is_default_selling_unit' => $unit->is_default_selling_unit
+            ];
+        }
+
+        return $hierarchy;
+    }
+
+    private static function calculateConversion($unit, $baseUnit, $allUnits)
+    {
+        if (!$baseUnit) {
+            return [
+                'formula' => '',
+                'total' => $unit->quantity
+            ];
+        }
+
+        $formula = "1 {$unit->unit->title} = {$unit->quantity}";
+        $total = $unit->quantity;
+
+        $current = $unit;
+        $chain = [];
+
+        while ($current->parent_id) {
+            $parent = $allUnits->firstWhere('id', $current->parent_id);
+            if (!$parent) break;
+
+            $chain[] = $parent;
+            $total *= $parent->quantity;
+            $current = $parent;
+        }
+
+        if (!empty($chain)) {
+            $chainText = [];
+            $runningTotal = $unit->quantity;
+
+            foreach (array_reverse($chain) as $chainUnit) {
+                $chainText[] = "{$runningTotal} {$chainUnit->unit->title}";
+                $runningTotal *= $chainUnit->quantity;
+            }
+            $formula .= " " . implode(" = ", $chainText);
+        }
+
+        $formula .= " = {$total} {$baseUnit->unit->title}";
+
+        return [
+            'formula' => $formula,
+            'total' => $total
+        ];
+    }
+
+    private static function handleUnitConfigurationSubmission(Request $request, $id, $type)
+    {
+        $additionalUnits = $request->input('additional_units', []);
+        $baseUnitId = $request->input('base_unit_id');
+        $baseUnitIsDefault = $request->boolean('base_unit_is_default_selling');
+
+        $request->validate([
+            'base_unit_id' => 'required|integer|exists:units,id',
+            'base_unit_is_default_selling' => 'nullable|boolean',
+            'additional_units' => [
+                'nullable',
+                'array',
+                'max:5',
+                new UnitHierarchyRule($baseUnitId, $id),
+            ],
+            'additional_units.*.unit_id' => 'required|integer|exists:units,id',
+            'additional_units.*.quantity' => 'required|numeric|min:0.01|max:999999',
+            'additional_units.*.parent_id' => 'nullable|integer',
+            'additional_units.*.is_default_selling_unit' => 'nullable|boolean',
+            'default_selling_validation' => [
+                new DefaultSellingUnitRule($baseUnitIsDefault, $additionalUnits)
+            ],
+        ], [
+            'base_unit_id.required' => 'Base unit is required.',
+            'base_unit_id.exists' => 'Selected base unit does not exist.',
+            'additional_units.max' => 'Maximum 5 additional units are allowed.',
+            'additional_units.*.unit_id.required' => 'Unit selection is required for all additional units.',
+            'additional_units.*.unit_id.exists' => 'Selected unit does not exist.',
+            'additional_units.*.quantity.required' => 'Quantity is required for all additional units.',
+            'additional_units.*.quantity.min' => 'Quantity must be greater than 0.',
+            'additional_units.*.quantity.max' => 'Quantity cannot exceed 999,999.',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $product = Product::findOrFail($id);
+
+            self::validateUnitConfigurationData($request, $additionalUnits);
+
+            self::saveBaseUnit($product->id, $request);
+
+            self::saveAdditionalUnits($product->id, $additionalUnits);
+
+            DB::commit();
+
+            return redirect()->route('product-management', [
+                'type' => encrypt($type),
+                'step' => encrypt(3),
+                'id' => encrypt($product->id)
+            ])->with('success', 'Unit configuration saved successfully');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            Log::warning('Unit configuration validation failed', [
+                'product_id' => $id,
+                'errors' => $e->errors(),
+                'input' => $request->all()
+            ]);
+            return back()->withErrors($e->errors())->withInput()
+                ->with('error', 'Please fix the validation errors and try again.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Unit configuration save failed', [
+                'product_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->withInput()->with('error', 'An error occurred while saving unit configuration: ' . $e->getMessage());
+        }
+    }
+
+    private static function validateUnitConfigurationData(Request $request, array $additionalUnits)
+    {
+        $baseUnitId = $request->input('base_unit_id');
+        $errors = [];
+
+        self::validateBusinessRules($request, $additionalUnits, $errors);
+
+        self::validateDataIntegrity($baseUnitId, $additionalUnits, $errors);
+
+        self::validateSystemConstraints($additionalUnits, $errors);
+
+        if (!empty($errors)) {
+            throw \Illuminate\Validation\ValidationException::withMessages($errors);
+        }
+    }
+
+    private static function validateBusinessRules(Request $request, array $additionalUnits, array &$errors)
+    {
+        $baseUnitId = $request->input('base_unit_id');
+        $allUnitIds = [$baseUnitId];
+
+        foreach ($additionalUnits as $index => $unit) {
+            if (in_array($unit['unit_id'], $allUnitIds)) {
+                $errors["additional_units.{$index}.unit_id"] = 'This unit is already selected. Each unit can only be used once.';
+            }
+            $allUnitIds[] = $unit['unit_id'];
+        }
+
+        self::validateDefaultSellingUnitSelection($request, $additionalUnits, $errors);
+
+        self::validateConversionCalculations($additionalUnits, $errors);
+    }
+
+    private static function validateDataIntegrity($baseUnitId, array $additionalUnits, array &$errors)
+    {
+        if (!Unit::where('id', $baseUnitId)->exists()) {
+            $errors['base_unit_id'] = 'Selected base unit does not exist in the system.';
+        }
+
+        foreach ($additionalUnits as $index => $unit) {
+            if (!Unit::where('id', $unit['unit_id'])->exists()) {
+                $errors["additional_units.{$index}.unit_id"] = 'Selected unit does not exist in the system.';
+            }
+        }
+    }
+
+    private static function validateSystemConstraints(array $additionalUnits, array &$errors)
+    {
+        if (count($additionalUnits) > 5) {
+            $errors['additional_units'] = 'Maximum 5 additional units are allowed to prevent system complexity.';
+        }
+
+        foreach ($additionalUnits as $index => $unit) {
+            $quantity = floatval($unit['quantity'] ?? 0);
+
+            if ($quantity > 999999) {
+                $errors["additional_units.{$index}.quantity"] = 'Quantity exceeds system maximum (999,999).';
+            }
+
+            if ($quantity < 0.01) {
+                $errors["additional_units.{$index}.quantity"] = 'Quantity below system minimum (0.01).';
+            }
+        }
+
+        self::validateNoCircularReferences($additionalUnits, $errors);
+    }
+
+    private static function validateNoCircularReferences(array $additionalUnits, array &$errors)
+    {
+        foreach ($additionalUnits as $index => $unit) {
+            $parentId = $unit['parent_id'] ?? null;
+            if (!$parentId) continue;
+
+            $visited = [];
+            $currentParentId = $parentId;
+
+            while ($currentParentId) {
+                if (in_array($currentParentId, $visited)) {
+                    $errors["additional_units.{$index}.parent_id"] = 'Circular reference detected in unit hierarchy.';
+                    break;
+                }
+
+                $visited[] = $currentParentId;
+
+                $parentFound = false;
+                foreach ($additionalUnits as $potentialParent) {
+                    if (isset($potentialParent['id']) && $potentialParent['id'] == $currentParentId) {
+                        $currentParentId = $potentialParent['parent_id'] ?? null;
+                        $parentFound = true;
+                        break;
+                    }
+                }
+
+                if (!$parentFound) {
+                    $dbParent = ProductAdditionalUnit::find($currentParentId);
+                    $currentParentId = $dbParent ? $dbParent->parent_id : null;
+                }
+            }
+        }
+    }
+
+    private static function validateDefaultSellingUnitSelection(Request $request, array $additionalUnits, array &$errors)
+    {
+        $defaultSellingCount = 0;
+        $baseUnitIsDefault = $request->boolean('base_unit_is_default_selling');
+
+        if ($baseUnitIsDefault) {
+            $defaultSellingCount++;
+        }
+
+        foreach ($additionalUnits as $index => $unit) {
+            if (!empty($unit['is_default_selling_unit'])) {
+                $defaultSellingCount++;
+            }
+        }
+
+        if ($defaultSellingCount === 0) {
+            $request->merge(['base_unit_is_default_selling' => true]);
+        } elseif ($defaultSellingCount > 1) {
+            $errors['default_selling_unit'] = 'Only one unit can be set as the default selling unit.';
+        }
+    }
+
+    private static function validateConversionCalculations(array $additionalUnits, array &$errors)
+    {
+        foreach ($additionalUnits as $index => $unit) {
+            $quantity = floatval($unit['quantity'] ?? 0);
+
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            $totalConversion = $quantity;
+            $currentIndex = $index;
+
+            while ($currentIndex > 0) {
+                $parentUnit = $additionalUnits[$currentIndex - 1] ?? null;
+                if (!$parentUnit) break;
+
+                $parentQuantity = floatval($parentUnit['quantity'] ?? 0);
+                if ($parentQuantity <= 0) {
+                    $errors["additional_units.{$index}.quantity"] = 'Cannot calculate conversion - parent unit has invalid quantity.';
+                    break;
+                }
+
+                $totalConversion *= $parentQuantity;
+                $currentIndex--;
+            }
+
+            if ($totalConversion > 1000000) {
+                $errors["additional_units.{$index}.quantity"] = 'Conversion results in extremely large numbers. Please check quantities.';
+            }
+
+            if ($totalConversion < 0.0001) {
+                $errors["additional_units.{$index}.quantity"] = 'Conversion results in extremely small numbers. Please check quantities.';
+            }
+        }
+    }
+
+    private static function saveBaseUnit($productId, Request $request)
+    {
+        ProductBaseUnit::updateOrCreate(
+            ['product_id' => $productId],
+            [
+                'unit_id' => $request->input('base_unit_id'),
+                'varient_id' => null
+            ]
+        );
+    }
+
+    private static function saveAdditionalUnits($productId, array $additionalUnits)
+    {
+        ProductAdditionalUnit::where('product_id', $productId)->delete();
+
+        $savedUnits = [];
+
+        foreach ($additionalUnits as $index => $unitData) {
+            $parentId = null;
+            if ($index > 0 && isset($savedUnits[$index - 1])) {
+                $parentId = $savedUnits[$index - 1]->id;
+            }
+
+            $unit = ProductAdditionalUnit::create([
+                'product_id' => $productId,
+                'varient_id' => null,
+                'unit_id' => $unitData['unit_id'],
+                'quantity' => $unitData['quantity'],
+                'parent_id' => $parentId,
+                'is_default_selling_unit' => !empty($unitData['is_default_selling_unit']),
+            ]);
+
+            $savedUnits[$index] = $unit;
+        }
+    }
+
+    private static function validateUnitHierarchy($additionalUnits)
+    {
+        $parentCounts = [];
+
+        foreach ($additionalUnits as $unit) {
+            if (isset($unit['parent_id']) && $unit['parent_id']) {
+                $parentCounts[$unit['parent_id']] = ($parentCounts[$unit['parent_id']] ?? 0) + 1;
+
+                if ($parentCounts[$unit['parent_id']] > 1) {
+                    throw new \Exception('Each parent unit can have only one child unit');
+                }
+            }
+        }
+
+        $unitIds = collect($additionalUnits)->pluck('id')->filter()->toArray();
+        foreach ($additionalUnits as $unit) {
+            if (isset($unit['parent_id']) && $unit['parent_id'] && !in_array($unit['parent_id'], $unitIds)) {
+                $parentExists = ProductAdditionalUnit::where('id', $unit['parent_id'])->exists();
+                if (!$parentExists) {
+                    throw new \Exception('Invalid parent unit reference');
+                }
+            }
+        }
+    }
 }
