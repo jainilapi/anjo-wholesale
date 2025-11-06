@@ -9,144 +9,127 @@
                     <h5 class="card-title mb-0">Unit Configuration</h5>
                 </div>
                 <div class="card-body">
-                    <form id="unitConfigForm" method="POST" action="{{ route('product-management', ['type' => encrypt($type), 'step' => encrypt($step), 'id' => encrypt($product->id)]) }}">
-                        @csrf
-                        
-                        <!-- Base Unit Selection -->
-                        <div class="mb-4">
-                            <label for="baseUnitSelect" class="form-label">Base Unit <span class="text-danger">*</span></label>
-                            <select class="form-select" id="baseUnitSelect" name="base_unit_id" required>
-                                <option value="">Select Base Unit</option>
-                                @foreach($availableUnits as $unit)
-                                    <option value="{{ $unit->id }}" 
-                                        {{ $baseUnit && $baseUnit->unit_id == $unit->id ? 'selected' : '' }}>
-                                        {{ $unit->title }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div class="invalid-feedback">
-                                Please select a base unit.
+                    <div class="mb-4">
+                        <label for="baseUnitSelect" class="form-label">Base Unit <span class="text-danger">*</span></label>
+                        <select class="form-select" id="baseUnitSelect" name="base_unit_id" required>
+                            <option value="">Select Base Unit</option>
+                            @foreach($availableUnits as $unit)
+                                <option value="{{ $unit->id }}" 
+                                    {{ $baseUnit && $baseUnit->unit_id == $unit->id ? 'selected' : '' }}>
+                                    {{ $unit->title }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <div class="invalid-feedback">
+                            Please select a base unit.
+                        </div>
+                        <div class="form-text">
+                            <div class="form-check form-switch d-inline-block ms-2">
+                                <input class="form-check-input default-selling-toggle" type="checkbox" id="baseUnitDefault" 
+                                        name="base_unit_is_default_selling" value="1"
+                                        {{ !$additionalUnits->where('is_default_selling_unit', 1)->count() ? 'checked' : '' }}>
+                                <label class="form-check-label" for="baseUnitDefault">
+                                    Default Selling Unit
+                                </label>
                             </div>
-                            <div class="form-text">
-                                <span class="badge bg-secondary">Base selling unit</span>
-                                <div class="form-check form-switch d-inline-block ms-2">
-                                    <input class="form-check-input default-selling-toggle" type="checkbox" id="baseUnitDefault" 
-                                           name="base_unit_is_default_selling" value="1"
-                                           {{ !$additionalUnits->where('is_default_selling_unit', 1)->count() ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="baseUnitDefault">
-                                        Default Selling Unit
-                                    </label>
-                                </div>
-                                <div class="mt-1">
-                                    <small class="text-muted">Primary unit for sales transactions</small>
-                                </div>
+                            <div class="mt-1">
+                                <small class="text-muted"></small>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Additional Units Section -->
-                        <div class="mb-4" id="additionalUnitsSection" style="display: none;">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <label class="form-label">Additional Units</label>
-                                <button type="button" class="btn btn-outline-primary btn-sm" id="addUnitBtn">
-                                    <i class="fas fa-plus"></i> Add Unit
-                                </button>
-                            </div>
-                            
-                            <div id="additionalUnitsContainer">
-                                @if($unitHierarchy ?? false)
-                                    @foreach($unitHierarchy as $index => $unitData)
-                                        <div class="unit-row mb-3 p-3 border rounded" data-level="{{ $index }}" data-index="{{ $index }}" data-unit-id="{{ $unitData['id'] ?? '' }}">
-                                            <div class="row">
-                                                <div class="col-md-3">
-                                                    <label class="form-label">Unit Name <span class="text-danger">*</span></label>
-                                                    <select class="form-select unit-select" name="additional_units[{{ $index }}][unit_id]" required>
-                                                        <option value="">Select Unit</option>
-                                                        @foreach($availableUnits as $unit)
-                                                            <option value="{{ $unit->id }}" {{ ($unitData['unit_id'] ?? '') == $unit->id ? 'selected' : '' }}>
-                                                                {{ $unit->title }}
-                                                            </option>
-                                                        @endforeach
-                                                    </select>
-                                                    <div class="invalid-feedback">
-                                                        Please select a unit.
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <label class="form-label">Quantity <span class="text-danger">*</span></label>
-                                                    <input type="number" class="form-control quantity-input" 
-                                                           name="additional_units[{{ $index }}][quantity]" 
-                                                           value="{{ $unitData['quantity'] ?? '' }}"
-                                                           min="0.01" step="0.01" placeholder="1.00" required>
-                                                    <div class="invalid-feedback">
-                                                        Please enter a valid quantity.
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label">Per Parent Unit</label>
-                                                    <input type="text" class="form-control parent-unit-display" readonly 
-                                                           value="{{ $unitData['parent_name'] ?? 'Select base unit first' }}">
-                                                    <input type="hidden" class="parent-unit-id" name="additional_units[{{ $index }}][parent_id]" 
-                                                           value="{{ $unitData['parent_id'] ?? '' }}">
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <div class="form-check form-switch mt-4">
-                                                        <input class="form-check-input default-selling-toggle" type="checkbox" 
-                                                               name="additional_units[{{ $index }}][is_default_selling_unit]" value="1"
-                                                               id="defaultSelling_{{ $index }}"
-                                                               {{ ($unitData['is_default_selling_unit'] ?? false) ? 'checked' : '' }}>
-                                                        <label class="form-check-label" for="defaultSelling_{{ $index }}">
-                                                            Default Selling Unit
-                                                        </label>
-                                                    </div>
-                                                    <div class="form-text">
-                                                        <small class="text-muted">Primary unit for sales transactions</small>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-1">
-                                                    <label class="form-label">&nbsp;</label>
-                                                    <div>
-                                                        <button type="button" class="btn btn-outline-danger btn-sm remove-unit-btn" 
-                                                                title="Remove Unit">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </div>
+                    <!-- Additional Units Section -->
+                    <div class="mb-4" id="additionalUnitsSection" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <label class="form-label">Additional Units</label>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="addUnitBtn">
+                                <i class="fas fa-plus"></i> Add Unit
+                            </button>
+                        </div>
+                        
+                        <div id="additionalUnitsContainer">
+                            @if($unitHierarchy ?? false)
+                                @foreach($unitHierarchy as $index => $unitData)
+                                    <div class="unit-row mb-3 p-3 border rounded" data-level="{{ $index }}" data-index="{{ $index }}" data-unit-id="{{ $unitData['id'] ?? '' }}">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label class="form-label">Unit Name <span class="text-danger">*</span></label>
+                                                <select class="form-select unit-select" name="additional_units[{{ $index }}][unit_id]" required>
+                                                    <option value="">Select Unit</option>
+                                                    @foreach($availableUnits as $unit)
+                                                        <option value="{{ $unit->id }}" {{ ($unitData['unit_id'] ?? '') == $unit->id ? 'selected' : '' }}>
+                                                            {{ $unit->title }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <div class="invalid-feedback">
+                                                    Please select a unit.
                                                 </div>
                                             </div>
-                                            <div class="conversion-formula mt-2">
-                                                <div class="d-flex align-items-center">
-                                                    <small class="text-muted conversion-text fw-bold">
-                                                        @if(isset($unitData['conversion_formula']))
-                                                            <i class="fas fa-equals text-primary me-1"></i>{{ $unitData['conversion_formula'] }}
-                                                        @else
-                                                            <i class="fas fa-info-circle text-muted me-1"></i>Configure unit to see conversion
-                                                        @endif
-                                                    </small>
+                                            <div class="col-md-2">
+                                                <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                                                <input type="number" class="form-control quantity-input" 
+                                                        name="additional_units[{{ $index }}][quantity]" 
+                                                        value="{{ $unitData['quantity'] ?? '' }}"
+                                                        min="0.01" step="0.01" placeholder="1.00" required>
+                                                <div class="invalid-feedback">
+                                                    Please enter a valid quantity.
                                                 </div>
-                                                <div class="conversion-details mt-1" style="display: none;">
-                                                    <small class="text-info conversion-breakdown"></small>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Per Parent Unit</label>
+                                                <input type="text" class="parent-unit-display" readonly 
+                                                        value="{{ trim($unitData['parent_name'] ?? 'Select base unit first') }}">
+                                                <input type="hidden" class="parent-unit-id" name="additional_units[{{ $index }}][parent_id]" 
+                                                        value="{{ $unitData['parent_id'] ?? '' }}">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-check form-switch mt-4">
+                                                    <input class="form-check-input default-selling-toggle" type="checkbox" 
+                                                            name="additional_units[{{ $index }}][is_default_selling_unit]" value="1"
+                                                            id="defaultSelling_{{ $index }}"
+                                                            {{ ($unitData['is_default_selling_unit'] ?? false) ? 'checked' : '' }}>
+                                                    <label class="form-check-label" for="defaultSelling_{{ $index }}">
+                                                        Default Selling Unit
+                                                    </label>
+                                                </div>
+                                                <div class="form-text">
+                                                    <small class="text-muted"></small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-1">
+                                                <label class="form-label">&nbsp;</label>
+                                                <div>
+                                                    <button type="button" class="btn btn-outline-danger btn-sm remove-unit-btn" 
+                                                            title="Remove Unit">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
-                                    @endforeach
-                                @endif
-                            </div>
-                            
-                            <div id="noUnitsMessage" class="text-muted text-center py-3" style="display: none;">
-                                <i class="fas fa-info-circle"></i> No additional units configured. Click "Add Unit" to create hierarchical units.
-                            </div>
+                                        <div class="conversion-formula mt-2">
+                                            <div class="d-flex align-items-center">
+                                                <small class="text-muted conversion-text fw-bold">
+                                                    @if(isset($unitData['conversion_formula']))
+                                                        <i class="fas fa-equals text-primary me-1"></i>{{ $unitData['conversion_formula'] }}
+                                                    @else
+                                                        <i class="fas fa-info-circle text-muted me-1"></i>Configure unit to see conversion
+                                                    @endif
+                                                </small>
+                                            </div>
+                                            <div class="conversion-details mt-1" style="display: none;">
+                                                <small class="text-info conversion-breakdown"></small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @endif
                         </div>
-
-                        <!-- Form Actions -->
-                        <div class="d-flex justify-content-between">
-                            <a href="{{ route('product-management', ['type' => encrypt($type), 'step' => encrypt(1), 'id' => encrypt($product->id)]) }}" 
-                               class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Previous
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                Next <i class="fas fa-arrow-right"></i>
-                            </button>
+                        
+                        <div id="noUnitsMessage" class="text-muted text-center py-3" style="display: none;">
+                            <i class="fas fa-info-circle"></i> No additional units configured. Click "Add Unit" to create hierarchical units.
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -156,6 +139,12 @@
 
 @push('product-css')
 <style>
+    .parent-unit-display {
+        border: none;
+        color: grey;
+        outline: none;
+    }
+
     .conversion-formula {
         /* background-color: #f8f9fa;
         border-left: 3px solid #007bff; */
@@ -231,7 +220,7 @@
     $(document).ready(function() {
         initializeAllSelect2();
 
-        $('#unitConfigForm').on('submit', function(e) {
+        $('#productStep1Form').on('submit', function(e) {
             let isValid = true;
             let validationErrors = [];
             
@@ -913,7 +902,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Per Parent Unit</label>
-                        <input type="text" class="form-control parent-unit-display" readonly 
+                        <input type="text" class="parent-unit-display" readonly 
                                placeholder="Select base unit first">
                         <input type="hidden" class="parent-unit-id" name="additional_units[${index}][parent_id]">
                     </div>
@@ -927,7 +916,7 @@
                             </label>
                         </div>
                         <div class="form-text">
-                            <small class="text-muted">Primary unit for sales transactions</small>
+                            <small class="text-muted"></small>
                         </div>
                     </div>
                     <div class="col-md-1">
@@ -1198,7 +1187,7 @@
         if (level === 0) {
             const baseUnitText = $('#baseUnitSelect option:selected').text();
             if (baseUnitText && baseUnitText !== 'Select Base Unit') {
-                parentDisplay.val(baseUnitText);
+                parentDisplay.val(baseUnitText.trim());
                 parentIdInput.val('');
             } else {
                 parentDisplay.val('Select base unit first');

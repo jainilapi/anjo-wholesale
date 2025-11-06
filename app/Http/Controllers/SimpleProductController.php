@@ -128,6 +128,7 @@ class SimpleProductController extends Controller
             $conversion = self::calculateConversion($unit, $baseUnit, $additionalUnits);
             $hierarchy[] = [
                 'id' => $unit->id,
+                'unit_id' => $unit->unit->id,
                 'unit_name' => $unit->unit->title,
                 'quantity' => $unit->quantity,
                 'parent_name' => $unit->parent ? $unit->parent->unit->title : ($baseUnit ? $baseUnit->unit->title : ''),
@@ -298,8 +299,6 @@ class SimpleProductController extends Controller
                 $errors["additional_units.{$index}.unit_id"] = 'Selected unit does not exist in the system.';
             }
         }
-        
-        self::validateHierarchyConstraints($additionalUnits, $errors);
     }
 
     private static function validateSystemConstraints(array $additionalUnits, array &$errors)
@@ -352,68 +351,6 @@ class SimpleProductController extends Controller
                 if (!$parentFound) {
                     $dbParent = ProductAdditionalUnit::find($currentParentId);
                     $currentParentId = $dbParent ? $dbParent->parent_id : null;
-                }
-            }
-        }
-    }
-
-    private static function validateHierarchyConstraints(array $additionalUnits, array &$errors)
-    {
-        if (empty($additionalUnits)) {
-            return;
-        }
-        
-        $parentCounts = [];
-        $unitIds = [];
-        
-        foreach ($additionalUnits as $index => $unit) {
-            $unitIds[$index] = $unit['unit_id'] ?? null;
-            
-            if (!empty($unit['parent_id'])) {
-                $parentFound = false;
-                for ($i = 0; $i < $index; $i++) {
-                    if (isset($unitIds[$i]) && $unitIds[$i] == $unit['parent_id']) {
-                        $parentFound = true;
-                        break;
-                    }
-                }
-                
-                if (!$parentFound) {
-                    $parentExists = ProductAdditionalUnit::where('id', $unit['parent_id'])->exists();
-                    if (!$parentExists) {
-                        $errors["additional_units.{$index}.parent_id"] = 'Invalid parent unit reference.';
-                    }
-                }
-                
-                $parentCounts[$unit['parent_id']] = ($parentCounts[$unit['parent_id']] ?? 0) + 1;
-                
-                if ($parentCounts[$unit['parent_id']] > 1) {
-                    $errors["additional_units.{$index}.parent_id"] = 'Each parent unit can have only one child unit.';
-                }
-            } else {
-                if ($index > 0) {
-                    $errors["additional_units.{$index}.parent_id"] = 'This unit must reference a parent unit.';
-                }
-            }
-        }
-        
-        for ($i = 1; $i < count($additionalUnits); $i++) {
-            $currentUnit = $additionalUnits[$i];
-            $expectedParentIndex = $i - 1;
-            
-            if (empty($currentUnit['parent_id'])) {
-                continue;
-            }
-            
-            $parentIsImmediate = false;
-            if (isset($unitIds[$expectedParentIndex])) {
-                $parentIsImmediate = ($currentUnit['parent_id'] == $unitIds[$expectedParentIndex]);
-            }
-            
-            if (!$parentIsImmediate) {
-                $parentExists = ProductAdditionalUnit::where('id', $currentUnit['parent_id'])->exists();
-                if (!$parentExists) {
-                    $errors["additional_units.{$i}.parent_id"] = 'Units must form a sequential hierarchy.';
                 }
             }
         }
