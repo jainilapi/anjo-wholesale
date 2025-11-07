@@ -16,6 +16,7 @@ use App\Models\ProductTierPricing;
 use App\Models\ProductVarient;
 use App\Rules\UnitHierarchyRule;
 use App\Rules\DefaultSellingUnitRule;
+use App\Models\Inventory;
 
 class VariableProductController extends Controller
 {
@@ -40,6 +41,29 @@ class VariableProductController extends Controller
 
         $warehouses = Warehouse::select('id', 'code', 'name')->toBase()->get();
 
+        $variants = ProductVarient::where('product_id', $product->id)->get()->map(function ($varient) {
+            return [
+                'id' => $varient->id,
+                'name' => $varient->name,
+                'sku' => $varient->sku,
+                'barcode' => $varient->barcode,
+                'status' => 'No Data',
+                'warehouses' => $varient->inventories()->with('warehouse')->get()->map(function ($location) {
+                    return [
+                        'id' => $location->warehouse_id,
+                        'code' => $location->warehouse->code ?? 'N/A',
+                        'name' => $location->warehouse->name ?? 'N/A',
+                        'qty' => $location->quantity,
+                        'reorder' => $location->reorder_level,
+                        'max' => $location->max_stock_level,
+                        'notes' => $location->notes,
+                        'lastUpdated' => date('M d, Y H:i A', strtotime($location->updated_at)),
+                        'history' => []
+                    ];
+                })->values()
+            ];
+        })->values();
+
         return view("products/{$type}/step-{$step}", compact(
             'product',
             'availableUnits',
@@ -49,7 +73,8 @@ class VariableProductController extends Controller
             'unitHierarchy',
             'step',
             'type',
-            'units'
+            'units',
+            'variants'
         ));
     }
 
@@ -421,6 +446,59 @@ class VariableProductController extends Controller
 
             case 5:
                 $product = Product::findOrFail($id);
+
+                $validated = $request->validate([
+                    'data' => 'nullable|array',
+                    'data.product_variant_id' => 'nullable|array',
+                    'data.product_variant_id.*' => 'exists:product_varients,id',
+                    'data.warehouse_id' => 'nullable|array',
+                    'data.warehouse_id.*' => 'exists:warehouses,id',
+                    'data.item_quantity' => 'nullable|array',
+                    'data.item_quantity.*' => 'integer|min:1',
+                    'data.item_reordering' => 'nullable|array',
+                    'data.item_reordering.*' => 'integer|min:0',
+                    'data.item_max' => 'nullable|array',
+                    'data.item_max.*' => 'integer|min:1',
+                    'data.item_notes' => 'nullable|array',
+                    'data.item_notes.*' => 'string|max:255'
+                ]);
+
+                $product->track_inventory_for_all_variant = $request->track_inventory_for_all_variant == 'on' ? 1 : 0;
+                $product->allow_backorder = $request->allow_backorder == 'on' ? 1 : 0;
+                $product->enable_auto_reorder_alerts = $request->enable_auto_reorder_alerts == 'on' ? 1 : 0;
+                $product->save();
+
+                foreach ($validated['data']['product_variant_id'] as $index => $product_variant_id) {
+                    $warehouse_id = $validated['data']['warehouse_id'][$index];
+                    $item_quantity = $validated['data']['item_quantity'][$index];
+                    $item_reordering = $validated['data']['item_reordering'][$index];
+                    $item_max = $validated['data']['item_max'][$index];
+                    $item_notes = $validated['data']['item_notes'][$index];
+
+                    $inventory = Inventory::where('product_varient_id', $product_variant_id)
+                        ->where('warehouse_id', $warehouse_id)
+                        ->first();
+
+                    if ($inventory) {
+                        $inventory->update([
+                            'quantity' => $item_quantity,
+                            'reorder_level' => $item_reordering,
+                            'max_stock_level' => $item_max,
+                            'notes' => $item_notes,
+                        ]);
+                    } else {
+                        Inventory::create([
+                            'product_id' => $product_variant_id,
+                            'product_varient_id' => $product_variant_id,
+                            'warehouse_id' => $warehouse_id,
+                            'quantity' => $item_quantity,
+                            'reorder_level' => $item_reordering,
+                            'max_stock_level' => $item_max,
+                            'notes' => $item_notes,
+                        ]);
+                    }
+                }
+
                     return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(6), 'id' => encrypt($product->id)])
                         ->with('success', 'Data saved successfully');
 

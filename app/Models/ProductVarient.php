@@ -18,4 +18,8 @@ class ProductVarient extends Model
     public function additionalUnits() {
         return $this->hasMany(ProductAdditionalUnit::class, 'varient_id');
     }
+
+    public function inventories() {
+        return $this->hasMany(Inventory::class, 'product_varient_id');
+    }
 }

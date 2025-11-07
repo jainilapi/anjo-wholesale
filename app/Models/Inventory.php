@@ -10,4 +10,8 @@ class Inventory extends Model
     use SoftDeletes;
 
     protected $guarded = [];
+
+    public function warehouse() {
+        return $this->belongsTo(Warehouse::class, 'warehouse_id');        
+    }
 }

@@ -41,23 +41,21 @@
   </div>
 
   <div class="form-check form-check-inline">
-    <input class="form-check-input" type="checkbox" id="trackInventory">
+    <input class="form-check-input" type="checkbox" id="trackInventory" name="track_inventory_for_all_variant" @if($product->track_inventory_for_all_variant) checked @endif>
     <label class="form-check-label" for="trackInventory">Track inventory for all variants</label>
   </div>
   <div class="form-check form-check-inline">
-    <input class="form-check-input" type="checkbox" id="allowBackorders">
+    <input class="form-check-input" type="checkbox" id="allowBackorders" name="allow_backorder" @if($product->allow_backorder) checked @endif>
     <label class="form-check-label" for="allowBackorders">Allow backorders</label>
   </div>
   <div class="form-check form-check-inline mb-4">
-    <input class="form-check-input" type="checkbox" id="autoReorder">
+    <input class="form-check-input" type="checkbox" id="autoReorder" name="enable_auto_reorder_alerts" @if($product->enable_auto_reorder_alerts) checked @endif>
     <label class="form-check-label" for="autoReorder">Enable auto-reorder alerts</label>
   </div>
 
   <div id="inventoryContainer"></div>
 
   <div class="mt-4 text-end">
-    <!-- <button type="button" class="btn btn-outline-primary me-2">Export Inventory Data</button>
-    <button type="button" class="btn btn-outline-secondary me-2">Import from CSV</button> -->
   </div>
 </div>
 
@@ -89,28 +87,7 @@
 <script>
 const allWarehouses = @json($warehouses);
 
-const variants = [
-  {
-    id: 1,
-    name: "Premium Cola – 330ml Can",
-    sku: "PC-330-CAN-001",
-    barcode: "1234567890123",
-    status: "In Stock",
-    warehouses: [
-
-    ]
-  },
-  {
-    id: 2,
-    name: "Premium Cola – 500ml Bottle",
-    sku: "PC-500-BTL-001",
-    barcode: "1234567890124",
-    status: "Low Stock",
-    warehouses: [
-
-    ]
-  }
-];
+const variants = @json($variants);
 
 let activeVariantId = null;
 
@@ -215,11 +192,15 @@ $(document).ready(function () {
         .map(
           (w) => `
           <tr>
-            <td><strong>${w.name}</strong></td>
-            <td><input type="number" class="form-control qty" value="${w.qty}" /></td>
-            <td><input type="number" class="form-control reorder" value="${w.reorder}" /></td>
-            <td><input type="number" class="form-control max" value="${w.max}" /></td>
-            <td><textarea class="form-control notes" rows="1">${w.notes || ""}</textarea></td>
+            <td>
+              <input type="hidden" name="data[product_variant_id][]" value="${variant.id}" />
+              <input type="hidden" name="data[warehouse_id][]" value="${w.id}" />
+              <strong>${w.name}</strong>
+            </td>
+            <td><input type="number" name="data[item_quantity][]" class="form-control qty" value="${w.qty}" /></td>
+            <td><input type="number" name="data[item_reordering][]" class="form-control reorder" value="${w.reorder}" /></td>
+            <td><input type="number" name="data[item_max][]" class="form-control max" value="${w.max}" /></td>
+            <td><textarea class="form-control notes" name="data[item_notes][]" rows="1">${w.notes || ""}</textarea></td>
             <td class="text-end">
               <small class="text-muted d-block mb-1">Last updated: ${w.lastUpdated}</small>
               <button type="button" class="btn btn-sm btn-outline-primary btn-history">View History</button>
