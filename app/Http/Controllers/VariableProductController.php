@@ -17,6 +17,8 @@ use App\Models\ProductVarient;
 use App\Rules\UnitHierarchyRule;
 use App\Rules\DefaultSellingUnitRule;
 use App\Models\Inventory;
+use App\Models\User;
+use App\Models\ProductSupplier;
 
 class VariableProductController extends Controller
 {
@@ -64,6 +66,39 @@ class VariableProductController extends Controller
             ];
         })->values();
 
+        $variantsForSupplier = ProductVarient::where('product_id', $product->id)->get()->map(function ($varient) {
+            return [
+                'id' => $varient->id,
+                'name' => $varient->name,
+                'sku' => $varient->sku,
+                'barcode' => $varient->barcode,
+                'status' => 'No Data',
+                'suppliers' => $varient->suppliers()->with(['supplier.country', 'variant'])->get()->map(function ($sup) {
+                    return [
+                        'id' => $sup->supplier->supplier_id ?? null,
+                        'name' => $sup->supplier->name ?? 'N/A',
+                        'phone_number' => '+' . ($sup->supplier->dial_code ?? '') . ' ' . ($sup->supplier->phone_number ?? 'N/A'),
+                        'country_flag' => $sup->supplier->country->emoji ?? 'N/A',
+                        'country_name' => $supplier->supplier->country->name ?? 'N/A',
+                        'email' => $sup->supplier->email ?? 'N/A'
+                    ];
+                })->values()
+            ];
+        })->values();
+
+        $suppliers = User::with('country')->whereHas('roles', function ($innerBuilder) {
+            return $innerBuilder->where('id', 5);
+        })->where('status', 1)->get()->map(function ($supplier) {
+            return [
+                'id' => $supplier->id,
+                'name' => $supplier->name,
+                'phone_number' => $supplier->dial_code . ' ' . $supplier->phone_number,
+                'country_flag' => $supplier->country->emoji ?? '',
+                'country_name' => $supplier->country->name ?? '',
+                'email' => $supplier->email
+            ];
+        })->values()->toArray();
+
         return view("products/{$type}/step-{$step}", compact(
             'product',
             'availableUnits',
@@ -74,7 +109,9 @@ class VariableProductController extends Controller
             'step',
             'type',
             'units',
-            'variants'
+            'variants',
+            'suppliers',
+            'variantsForSupplier'
         ));
     }
 
@@ -499,10 +536,44 @@ class VariableProductController extends Controller
                     }
                 }
 
-                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(6), 'id' => encrypt($product->id)])
-                        ->with('success', 'Data saved successfully');
+                return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(6), 'id' => encrypt($product->id)])
+                    ->with('success', 'Data saved successfully');
+
 
             case 6:
+
+                $product = Product::findOrFail($id);
+
+                $validated = $request->validate([
+                    'data' => 'nullable|array',
+                    'data.product_variant_id' => 'nullable|array',
+                    'data.product_variant_id.*' => 'exists:product_varients,id',
+                    'data.supplier_id' => 'nullable|array',
+                    'data.supplier_id.*' => 'exists:users,id'
+                ]);
+
+                foreach ($validated['data']['product_variant_id'] as $index => $product_variant_id) {
+                    $supplier_id = $validated['data']['supplier_id'][$index];
+
+                    $inventory = ProductSupplier::where('product_varient_id', $product_variant_id)
+                        ->where('supplier_id', $supplier_id)
+                        ->first();
+
+                    if (!$inventory) {
+                        ProductSupplier::create([
+                            'product_id' => $product->id,
+                            'product_varient_id' => $product_variant_id,
+                            'supplier_id' => $supplier_id
+                        ]);
+                    }
+                }
+
+                return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(7), 'id' => encrypt($product->id)])
+                    ->with('success', 'Data saved successfully');
+
+
+
+            case 7:
 
                 try {
                     DB::beginTransaction();
@@ -555,7 +626,7 @@ class VariableProductController extends Controller
                         ->with('error', 'Failed to save product: ' . $e->getMessage());
                 }
 
-            case 7:
+            case 8:
 
                 break;
             default:

@@ -2,319 +2,257 @@
 
 @push('product-css')
 <style>
-.category-tree {
-    background-color: #f8f9fa;
+.stepper {
+  list-style: none;
+  padding-left: 1rem;
+  position: relative;
 }
-
-.category-item {
-    margin-bottom: 5px;
+.stepper::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12px;
+  width: 2px;
+  height: 100%;
+  background: #dee2e6;
 }
-
-.category-toggle {
-    cursor: pointer;
-    color: #6c757d;
-    text-decoration: none;
-    margin-right: 5px;
+.step {
+  position: relative;
+  margin-bottom: 1rem;
+  padding-left: 2rem;
 }
-
-.category-toggle:hover {
-    color: #495057;
-}
-
-.category-children {
-    margin-left: 20px;
-    margin-top: 5px;
-}
-
-.form-check-input:checked {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-}
-
-.form-switch .form-check-input {
-    width: 3em;
-    height: 1.5em;
-    cursor: pointer;
-}
-
-.card-subtitle {
-    color: #6c757d;
-    font-size: 0.875rem;
-}
-
-.additional-categories .form-check {
-    padding-left: 1.5rem;
-}
-
-.additional-categories .form-check-label {
-    cursor: pointer;
-}
-
-.additional-categories .form-check-label:hover {
-    color: #0d6efd;
+.step::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #0d6efd;
 }
 </style>
 @endpush
 
-@php
-$categories = \App\Models\Category::buildCategoryTree();
-
-$additionalCategories = \App\Models\Category::whereNull('deleted_at')
-    ->where('status', 1)
-    ->orderBy('name')
-    ->get();
-
-$selectedPrimaryCategory = null;
-$selectedAdditionalCategories = [];
-
-if ($product) {
-    $primaryCategory = \App\Models\ProductCategory::where('product_id', $product->id)
-        ->where('is_primary', 1)
-        ->whereNull('deleted_at')
-        ->first();
-
-    $selectedPrimaryCategory = $primaryCategory ? $primaryCategory->category_id : null;
-
-    $selectedAdditionalCategories = \App\Models\ProductCategory::where('product_id', $product->id)
-        ->where('is_primary', 0)
-        ->whereNull('deleted_at')
-        ->pluck('category_id')
-        ->toArray();
-}
-@endphp
-
 @section('product-content')
-<div class="row">
-    <div class="col-md-6">
-        <div class="form-group mb-4">
-            <label for="primary_category" class="form-label">
-                Primary Category <span class="text-danger">*</span>
-            </label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                <input type="text" class="form-control" id="categorySearch" placeholder="Search categories...">
-            </div>
-            <div class="category-tree mt-3 border rounded p-3" style="max-height: 400px; overflow-y: auto;">
-                @if(isset($categories) && count($categories) > 0)
-                    @include('products.category-tree', [
-                        'categories' => $categories,
-                        'selectedPrimary' => $selectedPrimaryCategory ?? null,
-                        'type' => 'primary'
-                    ])
-                @else
-                    <p class="text-muted">No categories available</p>
-                @endif
-            </div>
-            <small class="form-text text-muted">
-                Select the most specific category that applies to your product
-            </small>
-            @error('primary_category')
-                <div class="invalid-feedback d-block">{{ $message }}</div>
-            @enderror
-        </div>
+<div class="container py-4">
 
-        <div class="form-group mb-4">
-            <label class="form-label">Additional Categories</label>
-            <div class="additional-categories border rounded p-3" style="max-height: 300px; overflow-y: auto;">
-                @if(isset($additionalCategories) && count($additionalCategories) > 0)
-                    @foreach($additionalCategories as $category)
-                        <div class="form-check mb-2">
-                            <input class="form-check-input additional-category-checkbox" 
-                                    type="checkbox" 
-                                    name="additional_categories[]" 
-                                    value="{{ $category->id }}" 
-                                    id="additional_{{ $category->id }}"
-                                    {{ in_array($category->id, $selectedAdditionalCategories ?? []) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="additional_{{ $category->id }}">
-                                <i class="fas fa-{{ $category->icon ?? 'folder' }}"></i>
-                                {{ $category->name }}
-                            </label>
-                        </div>
-                    @endforeach
-                @else
-                    <p class="text-muted">No additional categories available</p>
-                @endif
-            </div>
-        </div>
-    </div>
+  <div id="inventoryContainer"></div>
 
-    <div class="col-md-6">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Promotional Settings</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                    <div>
-                        <strong>Featured on Homepage</strong>
-                        <p class="text-muted mb-0 small">Show this product in homepage carousel</p>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" 
-                                type="checkbox" 
-                                name="should_feature_on_home_page" 
-                                id="featuredToggle" 
-                                value="1"
-                                {{ old('should_feature_on_home_page', $product->should_feature_on_home_page ?? 0) ? 'checked' : '' }}>
-                        <label class="form-check-label" for="featuredToggle"></label>
-                    </div>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                    <div>
-                        <strong>New Product Badge</strong>
-                        <p class="text-muted mb-0 small">Display "New" badge on product listings</p>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" 
-                                type="checkbox" 
-                                name="is_new_product" 
-                                id="newProductToggle" 
-                                value="1"
-                                {{ old('is_new_product', $product->is_new_product ?? 0) ? 'checked' : '' }}>
-                        <label class="form-check-label" for="newProductToggle"></label>
-                    </div>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong>Best Seller Badge</strong>
-                        <p class="text-muted mb-0 small">Mark as best selling product</p>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" 
-                                type="checkbox" 
-                                name="is_best_seller" 
-                                id="bestSellerToggle" 
-                                value="1"
-                                {{ old('is_best_seller', $product->is_best_seller ?? 0) ? 'checked' : '' }}>
-                        <label class="form-check-label" for="bestSellerToggle"></label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">SEO Settings</h5>
-            </div>
-            <div class="card-body">
-
-                <div class="form-group mb-3">
-                    <label for="seoTitle" class="form-label">Meta Title</label>
-                    <input type="text" 
-                            class="form-control @error('seo_title') is-invalid @enderror" 
-                            id="seoTitle" 
-                            name="seo_title" 
-                            placeholder="Custom SEO title"
-                            value="{{ old('seo_title', $product->seo_title ?? '') }}"
-                            maxlength="60">
-                    <small class="form-text text-muted">
-                        Leave blank to use product name
-                        <span class="float-end" id="titleCounter">0/60</span>
-                    </small>
-                    @error('seo_title')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="form-group mb-0">
-                    <label for="seoDescription" class="form-label">Meta Description</label>
-                    <textarea class="form-control @error('seo_description') is-invalid @enderror" 
-                                id="seoDescription" 
-                                name="seo_description" 
-                                rows="4" 
-                                placeholder="SEO description for search engines"
-                                maxlength="160">{{ old('seo_description', $product->seo_description ?? '') }}</textarea>
-                    <small class="form-text text-muted">
-                        Recommended: 150-160 characters
-                        <span class="float-end" id="descCounter">0/160</span>
-                    </small>
-                    @error('seo_description')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-            </div>
-        </div>
-    </div>
+  <div class="mt-4 text-end">
+  </div>
 </div>
 
+<div class="modal fade" id="addWarehouseModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add Supplier</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="warehouseSelect" class="form-label">Select supplier</label>
+          <select id="warehouseSelect" class="form-select">
+            <option value="">Select Supplier</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmAddWarehouse">Add Supplier</button>
+      </div>
+    </div>
+  </div>
+</div>
 @endsection
 
 @push('product-js')
 <script>
-$(document).ready(function() {
-    function updateCounter(inputId, counterId, max) {
-        var length = $('#' + inputId).val().length;
-        $('#' + counterId).text(length + '/' + max);
+const allWarehouses = @json($suppliers);
+
+const variants = @json($variantsForSupplier);
+
+let activeVariantId = null;
+
+$(document).ready(function () {
+  renderVariants();
+
+  $(document).on("click", ".btn-history", function () {
+    const row = $(this).closest("tr");
+    const historyRow = row.next(".warehouse-history");
+    historyRow.find(".history").slideToggle();
+  });
+
+  $(document).on("click", ".btn-adjust", function () {
+    const row = $(this).closest("tr");
+    if (validateRow(row)) {
+      alert("Stock adjusted successfully!");
     }
+  });
 
-    $('#seoTitle').on('input', function() {
-        updateCounter('seoTitle', 'titleCounter', 60);
-    });
+  $(document).on('click', '.remove-supplier', function () {
+    let that = this;
+    Swal.fire({
+        title: 'Are you sure?',
+        text: 'This action cannot be undone!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
 
-    $('#seoDescription').on('input', function() {
-        updateCounter('seoDescription', 'descCounter', 160);
-    });
+        let deletableVid = $(that).data('variant_id');
+        let deletableSid = $(that).data('supplier_id');
 
-    updateCounter('seoTitle', 'titleCounter', 60);
-    updateCounter('seoDescription', 'descCounter', 160);
+        let variant = variants.find(v => v.id == deletableVid);
 
-    $('#categorySearch').on('keyup', function() {
-        var searchTerm = $(this).val().toLowerCase();
-        $('.category-tree .category-item').each(function() {
-            var categoryName = $(this).find('label').text().toLowerCase();
-            if (categoryName.indexOf(searchTerm) > -1) {
-                $(this).show();
-            } else {
-                $(this).hide();
+        if (variant) {
+            let supplierIndex = variant.suppliers.findIndex(s => s.id == deletableSid);
+
+            if (supplierIndex !== -1) {
+                variant.suppliers.splice(supplierIndex, 1);
             }
-        });
-    });
+        }
 
-    $('input[name="primary_category"]').on('change', function() {
-        if ($(this).is(':checked')) {
-            $('input[name="primary_category"]').not(this).prop('checked', false);
+            $(that).parent().parent().remove();
         }
     });
+  });
 
-    $('.category-toggle').on('click', function(e) {
-        e.preventDefault();
-        var icon = $(this).find('i');
-        var children = $(this).closest('.category-item').find('> .category-children');
-        
-        if (children.is(':visible')) {
-            children.slideUp(200);
-            icon.removeClass('fa-chevron-down').addClass('fa-chevron-right');
-        } else {
-            children.slideDown(200);
-            icon.removeClass('fa-chevron-right').addClass('fa-chevron-down');
-        }
-    });
-
-    $('#step4Form').on('submit', function(e) {
-        var primarySelected = $('input[name="primary_category"]:checked').length;
-        
-        if (primarySelected === 0) {
-            e.preventDefault();
-            alert('Please select a primary category for your product.');
-            return false;
-        }
-    });
-
-    $('input[name="primary_category"]').on('change', function() {
-        if ($(this).is(':checked')) {
-            var categoryId = $(this).val();
-            $('.additional-category-checkbox[value="' + categoryId + '"]').prop('checked', false).attr('disabled', true);
-        } else {
-            $('.additional-category-checkbox').attr('disabled', false);
-        }
-    });
-
-    var selectedPrimary = $('input[name="primary_category"]:checked').val();
-    if (selectedPrimary) {
-        $('.additional-category-checkbox[value="' + selectedPrimary + '"]').prop('checked', false).attr('disabled', true);
+  $(document).on("click", ".btn-add-warehouse", function () {
+    activeVariantId = $(this).data("variant-id");
+    const variant = variants.find(v => v.id === activeVariantId);
+    const usedWarehouses = variant.suppliers.map(w => w);
+    
+    const available = allWarehouses.filter(w => !usedWarehouses.map(z => z.id).includes(w.id));
+    
+    const select = $("#warehouseSelect");
+    select.empty();
+    if (available.length) {
+      available.forEach(w => select.append(`<option value="${w.id}">${w.name} - ${w.email}</option>`));
+    } else {
+      select.append(`<option value="">No more suppliers available</option>`);
     }
+
+    $("#addWarehouseModal").modal("show");
+  });
+
+  $("#confirmAddWarehouse").click(function () {
+    const selectedWarehouse = $("#warehouseSelect").val();
+    if (!selectedWarehouse) {
+      alert("Please select a supplier.");
+      return;
+    }
+
+    const variant = variants.find(v => v.id === activeVariantId);
+    if (variant.suppliers.some(w => w.id === selectedWarehouse)) {
+      alert("This supplier is already added.");
+      return;
+    }
+
+    let selectedWarehouseObject = allWarehouses.find(item => item.id == selectedWarehouse);
+    
+    if (selectedWarehouseObject) {
+      variant.suppliers.push(selectedWarehouseObject);
+
+      $("#addWarehouseModal").modal("hide");
+      renderVariants();
+    }
+
+    return false;
+  });
+
+  function validateRow(row) {
+    const qty = parseFloat(row.find(".qty").val());
+    const reorder = parseFloat(row.find(".reorder").val());
+    const max = parseFloat(row.find(".max").val());
+    let valid = true;
+
+    row.find("input").removeClass("is-invalid");
+
+    if (isNaN(qty) || qty < 0) {
+      row.find(".qty").addClass("is-invalid");
+      valid = false;
+    }
+    if (isNaN(reorder) || reorder < 0) {
+      row.find(".reorder").addClass("is-invalid");
+      valid = false;
+    }
+    if (isNaN(max) || max < 0 || reorder > max) {
+      row.find(".max").addClass("is-invalid");
+      valid = false;
+    }
+
+    return valid;
+  }
+
+  function renderVariants() {
+    const container = $("#inventoryContainer");
+    container.empty();
+
+    variants.forEach((variant) => {
+      const warehouseRows = variant.suppliers
+        .map(
+          (w) => `
+          <tr>
+            <td>
+              <input type="hidden" name="data[product_variant_id][]" value="${variant.id}" />
+              <input type="hidden" name="data[supplier_id][]" value="${w.id}" />
+              <strong>${w.name}</strong>
+            </td>
+            <td>${w.phone_number} - (Email: ${w.email})</td>
+            <td>${w.country_flag}</td>
+            <td>
+              <button data-variant_id="${variant.id}" data-supplier_id="${w.id}" type="button" class="remove-supplier btn btn-sm btn-outline-danger">Remove</button>
+            </td>
+          </tr>`
+        )
+        .join("");
+
+      const card = `
+        <div class="card variant-card mb-3">
+          <div class="card-header bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong>${variant.name}</strong><br>
+                <small>SKU: ${variant.sku} | Barcode: ${variant.barcode}</small>
+              </div>
+              <div>
+                <button type="button" class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="collapse" data-bs-target="#collapse${variant.id}">
+                  <i class="fa fa-chevron-down"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary btn-add-warehouse" data-variant-id="${variant.id}">
+                  <i class="fa fa-plus"></i> Add Supplier
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="collapse${variant.id}" class="collapse show">
+            <div class="card-body">
+              <table class="table align-middle table-bordered mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Supplier Name</th>
+                    <th>Supplier Contact Detail</th>
+                    <th>Supplier Country</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${warehouseRows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>`;
+
+      container.append(card);
+    });
+  }
 });
 </script>
 @endpush

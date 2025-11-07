@@ -22,4 +22,8 @@ class ProductVarient extends Model
     public function inventories() {
         return $this->hasMany(Inventory::class, 'product_varient_id');
     }
+
+    public function suppliers() {
+        return $this->hasMany(ProductSupplier::class, 'product_varient_id');
+    }
 }

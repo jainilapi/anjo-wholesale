@@ -100,15 +100,15 @@ class ProductController extends Controller
 
         $step = decrypt($step);
 
-        if ($type == 'simple' && !($step >= 1 && $step <= 6)) {
+        if ($type == 'simple' && !($step >= 1 && $step <= 7)) {
             abort(404, $notFoundMessage);
         }
 
-        if ($type == 'variable' && !($step >= 1 && $step <= 7)) {
+        if ($type == 'variable' && !($step >= 1 && $step <= 8)) {
             abort(404, $notFoundMessage);
         }
 
-        if ($type == 'bundled' && !($step >= 1 && $step <= 7)) {
+        if ($type == 'bundled' && !($step >= 1 && $step <= 8)) {
             abort(404, $notFoundMessage);
         }
 
