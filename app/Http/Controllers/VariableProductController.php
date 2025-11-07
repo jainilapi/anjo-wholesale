@@ -75,7 +75,7 @@ class VariableProductController extends Controller
                 'status' => 'No Data',
                 'suppliers' => $varient->suppliers()->with(['supplier.country', 'variant'])->get()->map(function ($sup) {
                     return [
-                        'id' => $sup->supplier->supplier_id ?? null,
+                        'id' => $sup->supplier_id ?? null,
                         'name' => $sup->supplier->name ?? 'N/A',
                         'phone_number' => '+' . ($sup->supplier->dial_code ?? '') . ' ' . ($sup->supplier->phone_number ?? 'N/A'),
                         'country_flag' => $sup->supplier->country->emoji ?? 'N/A',
@@ -543,7 +543,7 @@ class VariableProductController extends Controller
             case 6:
 
                 $product = Product::findOrFail($id);
-
+                
                 $validated = $request->validate([
                     'data' => 'nullable|array',
                     'data.product_variant_id' => 'nullable|array',
@@ -552,19 +552,31 @@ class VariableProductController extends Controller
                     'data.supplier_id.*' => 'exists:users,id'
                 ]);
 
-                foreach ($validated['data']['product_variant_id'] as $index => $product_variant_id) {
-                    $supplier_id = $validated['data']['supplier_id'][$index];
+                $toKeep = [];
 
-                    $inventory = ProductSupplier::where('product_varient_id', $product_variant_id)
-                        ->where('supplier_id', $supplier_id)
-                        ->first();
+                if (isset($validated['data']['product_variant_id'])) {
+                    foreach ($validated['data']['product_variant_id'] as $index => $product_variant_id) {
+                        $supplier_id = $validated['data']['supplier_id'][$index];
 
-                    if (!$inventory) {
-                        ProductSupplier::create([
-                            'product_id' => $product->id,
-                            'product_varient_id' => $product_variant_id,
-                            'supplier_id' => $supplier_id
-                        ]);
+                        $inventory = ProductSupplier::where('product_varient_id', $product_variant_id)
+                            ->where('supplier_id', $supplier_id)
+                            ->first();
+
+                        if (!$inventory) {
+                            $inventory = ProductSupplier::create([
+                                'product_id' => $product->id,
+                                'product_varient_id' => $product_variant_id,
+                                'supplier_id' => $supplier_id
+                            ]);
+                        }
+
+                        $toKeep[] = $inventory->id;
+                    }
+
+                    if (empty($toKeep)) {
+                        ProductSupplier::where('product_id', $product->id)->delete();
+                    } else {
+                        ProductSupplier::where('product_id', $product->id)->whereNotIn('id', $toKeep)->delete();
                     }
                 }
 
