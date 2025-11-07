@@ -114,7 +114,8 @@ class ProductController extends Controller
 
         if (empty($id)) {
             $product = Product::create([
-                'name' => 'Untitled Product'
+                'name' => 'Untitled Product',
+                'type' => $type
             ]);
 
             return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt($step), 'id' => encrypt($product->id)]);
@@ -122,6 +123,8 @@ class ProductController extends Controller
 
         $id = decrypt($id);
         $product = Product::find($id);
+        $product->type = $type;
+        $product->save();
 
         if ($request->method() == 'GET') {
             if ($type == 'simple') {

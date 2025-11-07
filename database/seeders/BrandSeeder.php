@@ -58,6 +58,13 @@ class BrandSeeder extends Seeder
                 'url' => 'https://en.wikipedia.org/wiki/Dr_Pepper#/media/File:Dr_Pepper_modern.svg',
                 'status' => 1,
             ],
+            [
+                'name' => 'Apple',
+                'slug' => Str::slug('Apple'),
+                'description' => 'Apple Inc. is an American multinational technology company',
+                'url' => 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg',
+                'status' => 1,
+            ],
         ];
 
         foreach ($brands as $brand) {

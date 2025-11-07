@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('warehouses', function (Blueprint $table) {
             $table->id();
+            $table->boolean('type')->default(0)->comment('0 = Location | 1 = Warehouse');
             $table->string('code');
             $table->string('name');
             $table->string('address_line_1');

@@ -9,6 +9,7 @@ use App\Models\BrandProduct;
 use App\Models\Product;
 use Illuminate\Support\Facades\Log;
 use App\Models\Unit;
+use App\Models\Warehouse;
 use App\Models\ProductBaseUnit;
 use App\Models\ProductAdditionalUnit;
 use App\Models\ProductTierPricing;
@@ -37,10 +38,13 @@ class VariableProductController extends Controller
 
         $units = Unit::get();
 
+        $warehouses = Warehouse::select('id', 'code', 'name')->toBase()->get();
+
         return view("products/{$type}/step-{$step}", compact(
             'product',
             'availableUnits',
             'baseUnit',
+            'warehouses',
             'additionalUnits',
             'unitHierarchy',
             'step',
@@ -411,8 +415,10 @@ class VariableProductController extends Controller
                 }
 
             case 5:
+                $product = Product::findOrFail($id);
+                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(6), 'id' => encrypt($product->id)])
+                        ->with('success', 'Data saved successfully');
 
-                break;
             case 6:
 
                 try {

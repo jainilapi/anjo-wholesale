@@ -28,6 +28,9 @@ return new class extends Migration
             $table->text('seo_description')->nullable();
             $table->double('single_product_price')->nullable();
             $table->boolean('in_draft')->default(1);
+            $table->boolean('track_inventory_for_all_variant')->default(false);
+            $table->boolean('allow_backorder')->default(false);
+            $table->boolean('enable_auto_reorder_alerts')->default(false);
             $table->softDeletes();
             $table->timestamps();
         });

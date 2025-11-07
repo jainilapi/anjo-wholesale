@@ -107,11 +107,6 @@
 <script>
 $(document).ready(function() {
 
-    $('#country_id, #state_id, #city_id').select2({
-        placeholder: 'Select option',
-        width: '100%'
-    });
-
     const input = document.querySelector('#phone_number');
     const errorMap = ["Phone number is invalid.", "Invalid country code", "Too short", "Too long"];
     const iti = window.intlTelInput(input, {
@@ -132,106 +127,91 @@ $(document).ready(function() {
         }
     });
 
-    $('#country_id').on('change', function() {
-        let countryId = $(this).val();
-        $('#state_id').empty().append('<option value="">Select State</option>');
-        $('#city_id').empty().append('<option value="">Select City</option>');
-        
-        if (countryId) {
-            $.ajax({
-                url: '{{ route("state-list") }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    country_id: countryId,
-                    searchQuery: ''
-                },
-                success: function(response) {
-                    if (response.items && response.items.length > 0) {
-                        $.each(response.items, function(index, item) {
-                            $('#state_id').append('<option value="' + item.id + '">' + item.text + '</option>');
-                        });
-                    }
-                }
-            });
-        }
+    $('#country_id').select2({
+        allowClear: true,
+        placeholder: 'Select country',
+        width: '100%'
     });
-
-    $('#state_id').on('change', function() {
-        let stateId = $(this).val();
-        $('#city_id').empty().append('<option value="">Select City</option>');
-        
-        if (stateId) {
-            $.ajax({
-                url: '{{ route("city-list") }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    state_id: stateId,
-                    searchQuery: ''
-                },
-                success: function(response) {
-                    if (response.items && response.items.length > 0) {
-                        $.each(response.items, function(index, item) {
-                            $('#city_id').append('<option value="' + item.id + '">' + item.text + '</option>');
-                        });
-                    }
-                }
-            });
-        }
-    });
-
-    function loadStatesAndCities() {
-        let countryId = $('#country_id').val();
-        let stateId = {{ $supplier->state_id ?? 'null' }};
-        let cityId = {{ $supplier->city_id ?? 'null' }};
-
-        if (countryId) {
-            $.ajax({
-                url: '{{ route("state-list") }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    country_id: countryId,
-                    searchQuery: ''
-                },
-                success: function(response) {
-                    if (response.items && response.items.length > 0) {
-                        $.each(response.items, function(index, item) {
-                            let selected = (item.id == stateId) ? 'selected' : '';
-                            $('#state_id').append('<option value="' + item.id + '" ' + selected + '>' + item.text + '</option>');
-                        });
-                        
-                        if (stateId) {
-                            loadCities(stateId, cityId);
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    function loadCities(stateId, cityId) {
-        $.ajax({
-            url: '{{ route("city-list") }}',
-            type: 'POST',
-            data: {
-                _token: '{{ csrf_token() }}',
-                state_id: stateId,
-                searchQuery: ''
+    
+    $('#state_id').select2({
+        allowClear: true,
+        placeholder: 'Select state',
+        width: '100%',
+        ajax: {
+            url: "{{ route('state-list') }}",
+            type: "POST",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    searchQuery: params.term,
+                    page: params.page || 1,
+                    country_id: $('#country_id').val(),
+                    _token: "{{ csrf_token() }}"
+                };
             },
-            success: function(response) {
-                if (response.items && response.items.length > 0) {
-                    $.each(response.items, function(index, item) {
-                        let selected = (item.id == cityId) ? 'selected' : '';
-                        $('#city_id').append('<option value="' + item.id + '" ' + selected + '>' + item.text + '</option>');
-                    });
-                }
-            }
-        });
-    }
+            processResults: function(data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: $.map(data.items, function(item) {
+                        return {
+                            id: item.id,
+                            text: item.text
+                        };
+                    }),
+                    pagination: {
+                        more: data.pagination.more
+                    }
+                };
+            },
+            cache: true
+        }
+    });
 
-    loadStatesAndCities();
+    $('#city_id').select2({
+        allowClear: true,
+        placeholder: 'Select city',
+        width: '100%',
+        ajax: {
+            url: "{{ route('city-list') }}",
+            type: "POST",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    searchQuery: params.term,
+                    page: params.page || 1,
+                    state_id: $('#state_id').val(),
+                    _token: "{{ csrf_token() }}"
+                };
+            },
+            processResults: function(data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: $.map(data.items, function(item) {
+                        return {
+                            id: item.id,
+                            text: item.text
+                        };
+                    }),
+                    pagination: {
+                        more: data.pagination.more
+                    }
+                };
+            },
+            cache: true
+        }
+    });
+
+    @if(isset($supplier->country->id))
+        $('#country_id').append(new Option('{{ $supplier->country->name ?? '' }}', '{{ $supplier->country->id ?? '' }}', true, true));
+    @endif
+    @if(isset($supplier->state->id))
+        $('#state_id').append(new Option('{{ $supplier->state->name ?? '' }}', '{{ $supplier->state->id ?? '' }}', true, true));
+    @endif
+    @if(isset($supplier->city->id))
+        $('#city_id').append(new Option('{{ $supplier->city->name ?? '' }}', '{{ $supplier->city->id ?? '' }}', true, true));
+    @endif
 
     $('#supplierForm').validate({
         rules: {

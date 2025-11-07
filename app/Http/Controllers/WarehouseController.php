@@ -37,7 +37,7 @@ class WarehouseController extends Controller
 
     public function ajax()
     {
-        $query = Warehouse::with(['country', 'state', 'city']);
+        $query = Warehouse::with(['country', 'state', 'city'])->w();
 
         return datatables()
         ->eloquent($query)

@@ -190,57 +190,79 @@ function placeMarkerAndPanTo(latLng, map) {
 
 $(document).ready(function() {
 
-    $('#country_id, #state_id, #city_id').select2({
-        placeholder: 'Select option',
+    $('#country_id').select2({
+        allowClear: true,
+        placeholder: 'Select country',
         width: '100%'
     });
 
-    $('#country_id').on('change', function() {
-        let countryId = $(this).val();
-        $('#state_id').empty().append('<option value="">Select State</option>');
-        $('#city_id').empty().append('<option value="">Select City</option>');
-        
-        if (countryId) {
-            $.ajax({
-                url: '{{ route("state-list") }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    country_id: countryId,
-                    searchQuery: ''
-                },
-                success: function(response) {
-                    if (response.items && response.items.length > 0) {
-                        $.each(response.items, function(index, item) {
-                            $('#state_id').append('<option value="' + item.id + '">' + item.text + '</option>');
-                        });
+    $('#state_id').select2({
+        allowClear: true,
+        placeholder: 'Select state',
+        width: '100%',
+        ajax: {
+            url: "{{ route('state-list') }}",
+            type: "POST",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    searchQuery: params.term,
+                    page: params.page || 1,
+                    country_id: $('#country_id').val(),
+                    _token: "{{ csrf_token() }}"
+                };
+            },
+            processResults: function(data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: $.map(data.items, function(item) {
+                        return {
+                            id: item.id,
+                            text: item.text
+                        };
+                    }),
+                    pagination: {
+                        more: data.pagination.more
                     }
-                }
-            });
+                };
+            },
+            cache: true
         }
     });
 
-    $('#state_id').on('change', function() {
-        let stateId = $(this).val();
-        $('#city_id').empty().append('<option value="">Select City</option>');
-        
-        if (stateId) {
-            $.ajax({
-                url: '{{ route("city-list") }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    state_id: stateId,
-                    searchQuery: ''
-                },
-                success: function(response) {
-                    if (response.items && response.items.length > 0) {
-                        $.each(response.items, function(index, item) {
-                            $('#city_id').append('<option value="' + item.id + '">' + item.text + '</option>');
-                        });
+    $('#city_id').select2({
+        allowClear: true,
+        placeholder: 'Select city',
+        width: '100%',
+        ajax: {
+            url: "{{ route('city-list') }}",
+            type: "POST",
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    searchQuery: params.term,
+                    page: params.page || 1,
+                    state_id: $('#state_id').val(),
+                    _token: "{{ csrf_token() }}"
+                };
+            },
+            processResults: function(data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: $.map(data.items, function(item) {
+                        return {
+                            id: item.id,
+                            text: item.text
+                        };
+                    }),
+                    pagination: {
+                        more: data.pagination.more
                     }
-                }
-            });
+                };
+            },
+            cache: true
         }
     });
 

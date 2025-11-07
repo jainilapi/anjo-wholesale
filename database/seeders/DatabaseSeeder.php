@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             CountriesTableSeeder::class,
             SettingSeeder::class,
+            WarehouseSeeder::class,
             StatesTableSeeder::class,
             BrandSeeder::class,
             CategorySeeder::class,

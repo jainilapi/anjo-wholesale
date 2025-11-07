@@ -14,6 +14,16 @@ class Warehouse extends Model
         'longitude' => 'decimal:8'
     ];
 
+    public static function scopeW($query)
+    {
+        return $query->where('type', 0);
+    }
+
+    public static function scopeL($query)
+    {
+        return $query->where('type', 1);
+    }
+
     public function country(): BelongsTo
     {
         return $this->belongsTo(Country::class);
