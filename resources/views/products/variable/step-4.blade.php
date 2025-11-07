@@ -48,8 +48,8 @@
 @php
 $finalVariants = $finalVariantsInfo = [];
 foreach ($product->variants as $variant) {
-    $temp = $variant->additionalUnits()->with('unit')->get()->toArray();
-    $baseUn = $variant->baseUnit()->with('unit')->first()->toArray();
+    $temp = $variant?->additionalUnits()?->with('unit')?->get()?->toArray() ?? [];
+    $baseUn = $variant?->baseUnit()?->with('unit')?->first()?->toArray() ?? [];
 
     array_unshift($temp, $baseUn);
     $finalVariants[] = $temp;
@@ -74,52 +74,56 @@ foreach ($product->variants as $variant) {
                     <p>Set quantity-based pricing for individual <span class="titleOfCurrentTabUnit"> {{ $variant[0]['unit']['title'] ?? 'N/A' }} </span> </p>
 
                     <ul class="nav nav-tabs" role="tablist">
-                        @foreach ($variant as $row)
-                            @php
-                            $tabId = md5($row['id'] . '-' . $row['varient_id']);
-                            @endphp
-                        <li class="nav-item" role="presentation">
-                            <a class="nav-link @if($loop->first) active @endif" id="{{ $tabId }}-tab" data-current-unit="{{ $row['unit']['title'] ?? 'N/A' }}" data-bs-toggle="tab" href="#{{ $tabId }}" role="tab" aria-controls="{{ $tabId }}" aria-selected="true">{{ $row['unit']['title'] ?? 'N/A' }} @if($loop->first) (Base Unit) @endif </a>
-                        </li>
-                        @endforeach
+                        @if(isset($variant[0]['id']))
+                            @foreach ($variant as $row)
+                                @php
+                                $tabId = md5($row['id'] . '-' . $row['varient_id']);
+                                @endphp
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link @if($loop->first) active @endif" id="{{ $tabId }}-tab" data-current-unit="{{ $row['unit']['title'] ?? 'N/A' }}" data-bs-toggle="tab" href="#{{ $tabId }}" role="tab" aria-controls="{{ $tabId }}" aria-selected="true">{{ $row['unit']['title'] ?? 'N/A' }} @if($loop->first) (Base Unit) @endif </a>
+                            </li>
+                            @endforeach
+                        @endif
                     </ul>
 
                     <div class="tab-content">
-                        @foreach ($variant as $row)
-                            @php
-                            $tabId = md5($row['id'] . '-' . $row['varient_id']);
-                            @endphp
-                        <div class="tab-pane fade @if($loop->first) show active @endif" id="{{ $tabId }}" role="tabpanel" aria-labelledby="{{ $tabId }}-tab">
-                            <table class="table table-bordered pricing-table-instance" data-variant-id="{{ $row['varient_id'] }}" data-unit-row-id="{{ $row['id'] }}">
-                                <thead>
-                                    <tr>
-                                        <th>Min Quantity</th>
-                                        <th>Max Quantity</th>
-                                        <th>Price per Unit</th>
-                                        <th>Discount %</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse(\App\Models\ProductTierPricing::where('product_varient_id', $row['varient_id'])->where('product_additional_unit_id', $row['id'])->get() as $tier)
-                                    <tr>
-                                        <td><input type="number" class="form-control" name="min_quantity[]" value="{{ $tier->min_qty }}" min="1" step="1"></td>
-                                        <td><input type="number" class="form-control" name="max_quantity[]" value="{{ $tier->max_qty }}"></td>
-                                        <td><input type="number" class="form-control" name="price_per_unit[]" value="{{ $tier->price_per_unit }}" step="0.01"></td>
-                                        <td><input type="number" class="form-control" name="discount[]" value="{{ $tier->discount_amount }}" step="0.01"></td>
-                                        <td class="actions-btn">
-                                            <button type="button" class="btn btn-danger remove-row">Delete</button>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    @endforelse
-                                </tbody>
-                            </table>
-                            <div class="add-row-btn">
-                                <button type="button" class="btn btn-primary addANewLevel">+ Add New Pricing Tier</button>
+                        @if(isset($variant[0]['id']))
+                            @foreach ($variant as $row)
+                                @php
+                                $tabId = md5($row['id'] . '-' . $row['varient_id']);
+                                @endphp
+                            <div class="tab-pane fade @if($loop->first) show active @endif" id="{{ $tabId }}" role="tabpanel" aria-labelledby="{{ $tabId }}-tab">
+                                <table class="table table-bordered pricing-table-instance" data-variant-id="{{ $row['varient_id'] }}" data-unit-row-id="{{ $row['id'] }}">
+                                    <thead>
+                                        <tr>
+                                            <th>Min Quantity</th>
+                                            <th>Max Quantity</th>
+                                            <th>Price per Unit</th>
+                                            <th>Discount %</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse(\App\Models\ProductTierPricing::where('product_varient_id', $row['varient_id'])->where('product_additional_unit_id', $row['id'])->get() as $tier)
+                                        <tr>
+                                            <td><input type="number" class="form-control" name="min_quantity[]" value="{{ $tier->min_qty }}" min="1" step="1"></td>
+                                            <td><input type="number" class="form-control" name="max_quantity[]" value="{{ $tier->max_qty }}"></td>
+                                            <td><input type="number" class="form-control" name="price_per_unit[]" value="{{ $tier->price_per_unit }}" step="0.01"></td>
+                                            <td><input type="number" class="form-control" name="discount[]" value="{{ $tier->discount_amount }}" step="0.01"></td>
+                                            <td class="actions-btn">
+                                                <button type="button" class="btn btn-danger remove-row">Delete</button>
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                                <div class="add-row-btn">
+                                    <button type="button" class="btn btn-primary addANewLevel">+ Add New Pricing Tier</button>
+                                </div>
                             </div>
-                        </div>
-                        @endforeach
+                            @endforeach
+                        @endif
                     </div>
                 </div>
             @endforeach

@@ -336,7 +336,7 @@ class VariableProductController extends Controller
                 $request->merge(['_tier_items' => $items]);
 
                 $request->validate([
-                    '_tier_items' => 'required|array|min:1',
+                    '_tier_items' => 'nullable|array',
                     '_tier_items.*.product_varient_id' => 'required|integer|exists:product_varients,id',
                     '_tier_items.*.product_additional_unit_id' => 'required|integer',
                     '_tier_items.*.min_qty' => 'required|numeric|min:1',
@@ -345,6 +345,11 @@ class VariableProductController extends Controller
                     '_tier_items.*.discount_type' => 'required|in:0,1',
                     '_tier_items.*.discount_amount' => 'nullable|numeric|min:0',
                 ]);
+
+                if (empty($items)) {
+                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(5), 'id' => encrypt($product->id)])
+                        ->with('success', 'Data saved successfully');
+                }
 
                 foreach ($items as $index => $row) {
                     $variant = ProductVarient::where('product_id', $product->id)->where('id', $row['product_varient_id'] ?? 0)->first();

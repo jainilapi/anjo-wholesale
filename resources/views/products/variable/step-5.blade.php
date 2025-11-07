@@ -56,8 +56,8 @@
   <div id="inventoryContainer"></div>
 
   <div class="mt-4 text-end">
-    <button type="button" class="btn btn-outline-primary me-2">Export Inventory Data</button>
-    <button type="button" class="btn btn-outline-secondary me-2">Import from CSV</button>
+    <!-- <button type="button" class="btn btn-outline-primary me-2">Export Inventory Data</button>
+    <button type="button" class="btn btn-outline-secondary me-2">Import from CSV</button> -->
   </div>
 </div>
 
