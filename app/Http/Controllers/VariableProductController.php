@@ -605,7 +605,7 @@ class VariableProductController extends Controller
 
                     \App\Models\ProductCategory::create([
                         'product_id' => $product->id,
-                        'category_id' => $request->input('primary_category'),
+                        'category_id' => $request->input('primary_category') ?? 1,
                         'is_primary' => 1,
                     ]);
 
