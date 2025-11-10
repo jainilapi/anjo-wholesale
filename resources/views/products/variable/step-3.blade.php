@@ -49,9 +49,9 @@
             @foreach($product->variants as $variant)
                 @php
                     $variantIndex = $loop->index;
-                    $variantBaseUnit = $baseUnits[$variantIndex] ?? null;
-                    $variantAdditionalUnits = $additionalUnits[$variantIndex] ?? collect();
-                    $variantUnitHierarchy = $unitHierarchies[$variantIndex] ?? [];
+                    $variantBaseUnit = $baseUnitsForAllV[$variant->id] ?? null;
+                    $variantAdditionalUnits = $additionalUnitsForAllV[$variant->id] ?? collect();
+                    $variantUnitHierarchy = $unitHierarchies[$variant->id] ?? [];
                 @endphp
 
                 <input type="hidden" name="variants[{{ $variantIndex }}][id]" value="{{ $variant->id }}">

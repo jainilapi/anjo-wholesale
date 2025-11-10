@@ -37,7 +37,25 @@ class VariableProductController extends Controller
             ->orderBy('parent_id')
             ->get();
 
-        $unitHierarchy = self::buildUnitHierarchy($additionalUnits, $baseUnit);
+        $unitHierarchy = $baseUnitsForAllV = $additionalUnitsForAllV = [];
+
+        foreach ($product->variants as $thisVariant) {
+
+            $baseUnitForV = ProductBaseUnit::where('product_id', $product->id)
+                ->where('varient_id', $thisVariant->id)
+                ->with('unit')
+                ->first();
+
+            $additionalUnitsForV = ProductAdditionalUnit::where('product_id', $product->id)
+                ->where('varient_id', $thisVariant->id)
+                ->with(['unit', 'parent'])
+                ->orderBy('parent_id')
+                ->get();
+
+            $unitHierarchy[$thisVariant->id] = self::buildUnitHierarchy($additionalUnitsForV, $baseUnitForV);
+            $baseUnitsForAllV[$thisVariant->id] = $baseUnitForV;
+            $additionalUnitsForAllV[$thisVariant->id] = $additionalUnitsForV;
+        }
 
         $units = Unit::get();
 
@@ -111,7 +129,9 @@ class VariableProductController extends Controller
             'units',
             'variants',
             'suppliers',
-            'variantsForSupplier'
+            'variantsForSupplier',
+            'baseUnitsForAllV',
+            'additionalUnitsForAllV'
         ));
     }
 
@@ -659,7 +679,6 @@ class VariableProductController extends Controller
     private static function buildUnitHierarchy($additionalUnits, $baseUnit)
     {
         $hierarchy = [];
-
         foreach ($additionalUnits as $unit) {
             $conversion = self::calculateConversion($unit, $baseUnit, $additionalUnits);
             $hierarchy[] = [
