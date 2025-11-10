@@ -270,6 +270,15 @@ $(document).ready(function() {
                 $(this).hide();
             }
         });
+
+        $('.additional-categories .form-check').each(function() {
+            var categoryName = $(this).find('label').text().toLowerCase();
+            if (categoryName.indexOf(searchTerm) > -1) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
     });
 
     $('input[name="primary_category"]').on('change', function() {

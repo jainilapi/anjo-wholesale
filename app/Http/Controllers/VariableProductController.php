@@ -534,34 +534,36 @@ class VariableProductController extends Controller
                 $product->enable_auto_reorder_alerts = $request->enable_auto_reorder_alerts == 'on' ? 1 : 0;
                 $product->save();
 
-                foreach ($validated['data']['product_variant_id'] as $index => $product_variant_id) {
-                    $warehouse_id = $validated['data']['warehouse_id'][$index];
-                    $item_quantity = $validated['data']['item_quantity'][$index];
-                    $item_reordering = $validated['data']['item_reordering'][$index];
-                    $item_max = $validated['data']['item_max'][$index];
-                    $item_notes = $validated['data']['item_notes'][$index];
+                if (isset($validated['data']['product_variant_id'])) {
+                    foreach ($validated['data']['product_variant_id'] as $index => $product_variant_id) {
+                        $warehouse_id = $validated['data']['warehouse_id'][$index];
+                        $item_quantity = $validated['data']['item_quantity'][$index];
+                        $item_reordering = $validated['data']['item_reordering'][$index];
+                        $item_max = $validated['data']['item_max'][$index];
+                        $item_notes = $validated['data']['item_notes'][$index];
 
-                    $inventory = Inventory::where('product_varient_id', $product_variant_id)
-                        ->where('warehouse_id', $warehouse_id)
-                        ->first();
+                        $inventory = Inventory::where('product_varient_id', $product_variant_id)
+                            ->where('warehouse_id', $warehouse_id)
+                            ->first();
 
-                    if ($inventory) {
-                        $inventory->update([
-                            'quantity' => $item_quantity,
-                            'reorder_level' => $item_reordering,
-                            'max_stock_level' => $item_max,
-                            'notes' => $item_notes,
-                        ]);
-                    } else {
-                        Inventory::create([
-                            'product_id' => $product_variant_id,
-                            'product_varient_id' => $product_variant_id,
-                            'warehouse_id' => $warehouse_id,
-                            'quantity' => $item_quantity,
-                            'reorder_level' => $item_reordering,
-                            'max_stock_level' => $item_max,
-                            'notes' => $item_notes,
-                        ]);
+                        if ($inventory) {
+                            $inventory->update([
+                                'quantity' => $item_quantity,
+                                'reorder_level' => $item_reordering,
+                                'max_stock_level' => $item_max,
+                                'notes' => $item_notes,
+                            ]);
+                        } else {
+                            Inventory::create([
+                                'product_id' => $product_variant_id,
+                                'product_varient_id' => $product_variant_id,
+                                'warehouse_id' => $warehouse_id,
+                                'quantity' => $item_quantity,
+                                'reorder_level' => $item_reordering,
+                                'max_stock_level' => $item_max,
+                                'notes' => $item_notes,
+                            ]);
+                        }
                     }
                 }
 
