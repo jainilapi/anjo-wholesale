@@ -1,224 +1,240 @@
 @extends('products.layout', ['step' => $step, 'type' => $type, 'product' => $product])
 
+@push('product-css')
+<style>
+.stepper {
+  list-style: none;
+  padding-left: 1rem;
+  position: relative;
+}
+.stepper::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12px;
+  width: 2px;
+  height: 100%;
+  background: #dee2e6;
+}
+.step {
+  position: relative;
+  margin-bottom: 1rem;
+  padding-left: 2rem;
+}
+.step::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #0d6efd;
+}
+.parent-unit-display:focus {
+    outline: none;
+}
+.parent-unit-display {
+    border: none;
+    color: grey;
+    display: block;
+}
+</style>
+@endpush
+
 @section('product-content')
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Unit Configuration</h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-4">
-                        <label for="baseUnitSelect" class="form-label">Base Unit <span class="text-danger">*</span></label>
-                        <select class="form-select" id="baseUnitSelect" name="base_unit_id" required>
-                            <option value="">Select Base Unit</option>
-                            @foreach($availableUnits as $unit)
-                                <option value="{{ $unit->id }}" 
-                                    {{ $baseUnit && $baseUnit->unit_id == $unit->id ? 'selected' : '' }}>
-                                    {{ $unit->title }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <div class="invalid-feedback">
-                            Please select a base unit.
-                        </div>
-                        <div class="form-text">
-                            <div class="form-check form-switch d-inline-block ms-2">
-                                <input class="form-check-input default-selling-toggle" type="checkbox" id="baseUnitDefault" 
-                                        name="base_unit_is_default_selling" value="1"
-                                        {{ !$additionalUnits->where('is_default_selling_unit', 1)->count() ? 'checked' : '' }}>
-                                <label class="form-check-label" for="baseUnitDefault">
-                                    Default Selling Unit
-                                </label>
-                            </div>
-                            <div class="mt-1">
-                                <small class="text-muted"></small>
-                            </div>
-                        </div>
-                    </div>
+            @foreach($product->variants as $variant)
+                @php
+                    $variantIndex = $loop->index;
+                    $variantBaseUnit = $baseUnits[$variantIndex] ?? null;
+                    $variantAdditionalUnits = $additionalUnits[$variantIndex] ?? collect();
+                    $variantUnitHierarchy = $unitHierarchies[$variantIndex] ?? [];
+                @endphp
 
-                    <!-- Additional Units Section -->
-                    <div class="mb-4" id="additionalUnitsSection" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <label class="form-label">Additional Units</label>
-                            <button type="button" class="btn btn-outline-primary btn-sm" id="addUnitBtn">
-                                <i class="fas fa-plus"></i> Add Unit
-                            </button>
+                <input type="hidden" name="variants[{{ $variantIndex }}][id]" value="{{ $variant->id }}">
+                <div class="card variant-card mb-3" data-variant-index="{{ $variantIndex }}">
+                    <div class="card-header bg-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ $variant->name }}</strong><br>
+                                <small>SKU: {{ $variant->sku }} | Barcode: {{ $variant->barcode }}</small>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2" data-bs-toggle="collapse" data-bs-target="#collapse{{ $variant->id }}">
+                                    <i class="fa fa-chevron-down"></i>
+                                </button>
+                            </div>
                         </div>
-                        
-                        <div id="additionalUnitsContainer">
-                            @if($unitHierarchy ?? false)
-                                @foreach($unitHierarchy as $index => $unitData)
-                                    <div class="unit-row mb-3 p-3 border rounded" data-level="{{ $index }}" data-index="{{ $index }}" data-unit-id="{{ $unitData['id'] ?? '' }}">
-                                        <div class="row">
-                                            <div class="col-md-3">
-                                                <label class="form-label">Unit Name <span class="text-danger">*</span></label>
-                                                <select class="form-select unit-select" name="additional_units[{{ $index }}][unit_id]" required>
-                                                    <option value="">Select Unit</option>
-                                                    @foreach($availableUnits as $unit)
-                                                        <option value="{{ $unit->id }}" {{ ($unitData['unit_id'] ?? '') == $unit->id ? 'selected' : '' }}>
-                                                            {{ $unit->title }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                <div class="invalid-feedback">
-                                                    Please select a unit.
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <label class="form-label">Quantity <span class="text-danger">*</span></label>
-                                                <input type="number" class="form-control quantity-input" 
-                                                        name="additional_units[{{ $index }}][quantity]" 
-                                                        value="{{ $unitData['quantity'] ?? '' }}"
-                                                        min="0.01" step="0.01" placeholder="1.00" required>
-                                                <div class="invalid-feedback">
-                                                    Please enter a valid quantity.
-                                                </div>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label class="form-label">Per Parent Unit</label>
-                                                <input type="text" class="parent-unit-display" readonly 
-                                                        value="{{ trim($unitData['parent_name'] ?? 'Select base unit first') }}">
-                                                <input type="hidden" class="parent-unit-id" name="additional_units[{{ $index }}][parent_id]" 
-                                                        value="{{ $unitData['parent_id'] ?? '' }}">
-                                            </div>
-                                            <div class="col-md-3">
-                                                <div class="form-check form-switch mt-4">
-                                                    <input class="form-check-input default-selling-toggle" type="checkbox" 
-                                                            name="additional_units[{{ $index }}][is_default_selling_unit]" value="1"
-                                                            id="defaultSelling_{{ $index }}"
-                                                            {{ ($unitData['is_default_selling_unit'] ?? false) ? 'checked' : '' }}>
-                                                    <label class="form-check-label" for="defaultSelling_{{ $index }}">
-                                                        Default Selling Unit
-                                                    </label>
-                                                </div>
-                                                <div class="form-text">
-                                                    <small class="text-muted"></small>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-1">
-                                                <label class="form-label">&nbsp;</label>
-                                                <div>
-                                                    <button type="button" class="btn btn-outline-danger btn-sm remove-unit-btn" 
-                                                            title="Remove Unit">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="conversion-formula mt-2">
-                                            <div class="d-flex align-items-center">
-                                                <small class="text-muted conversion-text fw-bold">
-                                                    @if(isset($unitData['conversion_formula']))
-                                                        <i class="fas fa-equals text-primary me-1"></i>{{ $unitData['conversion_formula'] }}
-                                                    @else
-                                                        <i class="fas fa-info-circle text-muted me-1"></i>Configure unit to see conversion
-                                                    @endif
-                                                </small>
-                                            </div>
-                                            <div class="conversion-details mt-1" style="display: none;">
-                                                <small class="text-info conversion-breakdown"></small>
-                                            </div>
-                                        </div>
+                    </div>
+                    <div id="collapse{{ $variant->id }}" class="collapse show">
+                        <div class="card-body">
+                            <div class="mb-4">
+                                <label for="baseUnitSelect_{{ $variantIndex }}" class="form-label">Base Unit <span class="text-danger">*</span></label>
+                                <select class="form-select base-unit-select" 
+                                        id="baseUnitSelect_{{ $variantIndex }}" 
+                                        name="variants[{{ $variantIndex }}][base_unit_id]" 
+                                        data-variant="{{ $variantIndex }}"
+                                        required>
+                                    <option value="">Select Base Unit</option>
+                                    @foreach($availableUnits as $unit)
+                                        <option value="{{ $unit->id }}" 
+                                            {{ $variantBaseUnit && $variantBaseUnit->unit_id == $unit->id ? 'selected' : '' }}>
+                                            {{ $unit->title }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="invalid-feedback">
+                                    Please select a base unit.
+                                </div>
+                                <div class="form-text">
+                                    <div class="form-check form-switch d-inline-block ms-2">
+                                        <input class="form-check-input default-selling-toggle" 
+                                            type="checkbox" 
+                                            id="baseUnitDefault_{{ $variantIndex }}" 
+                                            name="variants[{{ $variantIndex }}][base_unit_is_default_selling]" 
+                                            value="1"
+                                            data-variant="{{ $variantIndex }}"
+                                            {{ !$variantAdditionalUnits->where('is_default_selling_unit', 1)->count() ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="baseUnitDefault_{{ $variantIndex }}">
+                                            Default Selling Unit
+                                        </label>
                                     </div>
-                                @endforeach
-                            @endif
-                        </div>
-                        
-                        <div id="noUnitsMessage" class="text-muted text-center py-3" style="display: none;">
-                            <i class="fas fa-info-circle"></i> No additional units configured. Click "Add Unit" to create hierarchical units.
+                                    <div class="mt-1">
+                                        <small class="text-muted"></small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4 additional-units-section" id="additionalUnitsSection_{{ $variantIndex }}" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <label class="form-label">Additional Units</label>
+                                    <button type="button" 
+                                            class="btn btn-outline-primary btn-sm add-unit-btn" 
+                                            data-variant="{{ $variantIndex }}">
+                                        <i class="fas fa-plus"></i> Add Unit
+                                    </button>
+                                </div>
+                                
+                                <div class="additional-units-container" id="additionalUnitsContainer_{{ $variantIndex }}">
+                                    @if(isset($variantUnitHierarchy) && count($variantUnitHierarchy) > 0)
+                                        @foreach($variantUnitHierarchy as $index => $unitData)
+                                            <div class="unit-row mb-3 p-3 border rounded" 
+                                                data-level="{{ $index }}" 
+                                                data-index="{{ $index }}" 
+                                                data-variant="{{ $variantIndex }}"
+                                                data-unit-id="{{ $unitData['id'] ?? '' }}">
+                                                <div class="row">
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Unit Name <span class="text-danger">*</span></label>
+                                                        <select class="form-select unit-select" 
+                                                                name="variants[{{ $variantIndex }}][additional_units][{{ $index }}][unit_id]" 
+                                                                data-variant="{{ $variantIndex }}"
+                                                                required>
+                                                            <option value="">Select Unit</option>
+                                                            @foreach($availableUnits as $unit)
+                                                                <option value="{{ $unit->id }}" {{ ($unitData['unit_id'] ?? '') == $unit->id ? 'selected' : '' }}>
+                                                                    {{ $unit->title }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                        <div class="invalid-feedback">
+                                                            Please select a unit.
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                                                        <input type="number" 
+                                                            class="form-control quantity-input" 
+                                                            name="variants[{{ $variantIndex }}][additional_units][{{ $index }}][quantity]" 
+                                                            value="{{ $unitData['quantity'] ?? '' }}"
+                                                            data-variant="{{ $variantIndex }}"
+                                                            min="0.01" step="0.01" placeholder="1.00" required>
+                                                        <div class="invalid-feedback">
+                                                            Please enter a valid quantity.
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Per Parent Unit</label>
+                                                        <input type="text" class="parent-unit-display" readonly 
+                                                            value="{{ trim($unitData['parent_name'] ?? 'Select base unit first') }}">
+                                                        <input type="hidden" class="parent-unit-id" 
+                                                            name="variants[{{ $variantIndex }}][additional_units][{{ $index }}][parent_id]" 
+                                                            value="{{ $unitData['parent_id'] ?? '' }}">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="form-check form-switch mt-4">
+                                                            <input class="form-check-input default-selling-toggle" 
+                                                                type="checkbox" 
+                                                                name="variants[{{ $variantIndex }}][additional_units][{{ $index }}][is_default_selling_unit]" 
+                                                                value="1"
+                                                                id="defaultSelling_{{ $variantIndex }}_{{ $index }}"
+                                                                data-variant="{{ $variantIndex }}"
+                                                                {{ ($unitData['is_default_selling_unit'] ?? false) ? 'checked' : '' }}>
+                                                            <label class="form-check-label" for="defaultSelling_{{ $variantIndex }}_{{ $index }}">
+                                                                Default Selling Unit
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-text">
+                                                            <small class="text-muted"></small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-1">
+                                                        <label class="form-label">&nbsp;</label>
+                                                        <div>
+                                                            <button type="button" 
+                                                                    class="btn btn-outline-danger btn-sm remove-unit-btn" 
+                                                                    data-variant="{{ $variantIndex }}"
+                                                                    title="Remove Unit">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="conversion-formula mt-2">
+                                                    <div class="d-flex align-items-center">
+                                                        <small class="text-muted conversion-text fw-bold">
+                                                            @if(isset($unitData['conversion_formula']))
+                                                                <i class="fas fa-equals text-primary me-1"></i>{{ $unitData['conversion_formula'] }}
+                                                            @else
+                                                                <i class="fas fa-info-circle text-muted me-1"></i>Configure unit to see conversion
+                                                            @endif
+                                                        </small>
+                                                    </div>
+                                                    <div class="conversion-details mt-1" style="display: none;">
+                                                        <small class="text-info conversion-breakdown"></small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    @endif
+                                </div>
+                                
+                                <div class="no-units-message text-muted text-center py-3" 
+                                    id="noUnitsMessage_{{ $variantIndex }}" 
+                                    style="display: none;">
+                                    <i class="fas fa-info-circle"></i> No additional units configured. Click "Add Unit" to create hierarchical units.
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            @endforeach
         </div>
     </div>
 </div>
 @endsection
 
-@push('product-css')
-<style>
-    .parent-unit-display {
-        border: none;
-        color: grey;
-        outline: none;
-    }
-
-    .conversion-formula {
-        /* background-color: #f8f9fa;
-        border-left: 3px solid #007bff; */
-        padding: 8px 12px;
-        border-radius: 4px;
-        margin-top: 10px;
-    }
-    
-    .conversion-text {
-        font-family: 'Courier New', monospace;
-        font-size: 0.875rem;
-        color: #495057 !important;
-    }
-    
-    .conversion-breakdown {
-        font-family: 'Courier New', monospace;
-        font-size: 0.75rem;
-        color: #6c757d !important;
-        font-style: italic;
-    }
-    
-    .unit-row {
-        transition: all 0.3s ease;
-        border: 1px solid #dee2e6 !important;
-    }
-    
-    .unit-row:hover {
-        border-color: #007bff !important;
-        box-shadow: 0 2px 4px rgba(0,123,255,0.1);
-    }
-    
-    .conversion-formula .fas {
-        font-size: 0.875rem;
-    }
-    
-    .formula-highlight {
-        background-color: #fff3cd;
-        border-left-color: #ffc107;
-    }
-    
-    .formula-error {
-        background-color: #f8d7da;
-        border-left-color: #dc3545;
-    }
-    
-    .formula-success {
-        background-color: #d1edff;
-        border-left-color: #0dcaf0;
-    }
-    
-    .default-selling-toggle:checked {
-        background-color: #203c70;
-        border-color: #203c70;
-    }
-    
-    .default-selling-toggle:checked:focus {
-        box-shadow: 0 0 0 0.25rem #5376b6ff;
-    }
-    
-    .form-check-label .fas.fa-star {
-        transition: all 0.2s ease;
-    }
-    
-    .default-selling-toggle:checked + .form-check-label .fas.fa-star {
-        color: #203c70 !important;
-        text-shadow: 0 0 3px #5376b6ff;
-    }
-</style>
-@endpush
-
 @push('product-js')
 <script>
     $(document).ready(function() {
-        initializeAllSelect2();
+        const maxVariants = {{ $product->variants()->count() }};
+        
+        for (let variantIndex = 0; variantIndex < maxVariants; variantIndex++) {
+            initializeVariant(variantIndex);
+        }
 
         $('#productStep1Form').on('submit', function(e) {
             let isValid = true;
@@ -226,34 +242,13 @@
             
             clearAllValidationStates();
             
-            const baseUnitValidation = validateBaseUnit();
-            if (!baseUnitValidation.isValid) {
-                isValid = false;
-                validationErrors.push(...baseUnitValidation.errors);
-            }
-            
-            const hierarchyValidation = validateUnitHierarchy();
-            if (!hierarchyValidation.isValid) {
-                isValid = false;
-                validationErrors.push(...hierarchyValidation.errors);
-            }
-            
-            const defaultSellingValidation = validateDefaultSellingUnit();
-            if (!defaultSellingValidation.isValid) {
-                isValid = false;
-                validationErrors.push(...defaultSellingValidation.errors);
-            }
-            
-            const duplicateValidation = validateNoDuplicateUnits();
-            if (!duplicateValidation.isValid) {
-                isValid = false;
-                validationErrors.push(...duplicateValidation.errors);
-            }
-            
-            const conversionValidation = validateConversionCalculations();
-            if (!conversionValidation.isValid) {
-                isValid = false;
-                validationErrors.push(...conversionValidation.errors);
+            // Validate all variants
+            for (let variantIndex = 0; variantIndex < maxVariants; variantIndex++) {
+                const variantErrors = validateVariant(variantIndex);
+                if (variantErrors.length > 0) {
+                    isValid = false;
+                    validationErrors.push(`Variant ${variantIndex + 1}: ${variantErrors.join(', ')}`);
+                }
             }
             
             if (!isValid) {
@@ -265,65 +260,81 @@
             
             showSuccessMessage('Form validation passed. Submitting...');
         });
-
-        $('#baseUnitSelect').on('change', function() {
-            validateBaseUnit();
-            updateBaseUnitToggleState();
-            updateAllParentUnitDisplays();
-            updateAllConversionFormulas();
-            validateNoDuplicateUnits();
-            refreshAllSelect2();
-            performRealTimeValidation();
-        });
-        
-        $('#baseUnitSelect').on('select2:select', function(e) {
-            const selectedData = e.params.data;
-            showSuccessMessage(`Base unit set to: ${selectedData.text}`);
-        });
-        
-        $('#baseUnitSelect').on('select2:clear', function(e) {
-            showSuccessMessage('Base unit cleared');
-        });
-
-        $('#baseUnitSelect').on('blur', function() {
-            validateBaseUnit();
-        });
-
-        $('#baseUnitDefault').on('change', function() {
-            handleDefaultSellingToggle(this);
-            performRealTimeValidation();
-        });
-
-        $('#addUnitBtn').on('click', function() {
-            addNewUnitRow();
-        });
-        
-        $(document).on('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'u') {
-                e.preventDefault();
-                if ($('#baseUnitSelect').val()) {
-                    addNewUnitRow();
-                } else {
-                    showErrorMessage('Please select a base unit first');
-                }
-            }
-        });
-
-        updateBaseUnitToggleState();
-        
-        updateDefaultSellingIndicators();
-        
-        $('#baseUnitSelect').on('change', function() {
-            toggleAdditionalUnitsSection();
-        });
-        
-        toggleAdditionalUnitsSection();
-        
-        initializeExistingUnitRows();
     });
 
-    function validateBaseUnit() {
-        const baseUnitSelect = $('#baseUnitSelect');
+    function initializeVariant(variantIndex) {
+        initializeAllSelect2ForVariant(variantIndex);
+
+        $(`#baseUnitSelect_${variantIndex}`).on('change', function() {
+            validateBaseUnit(variantIndex);
+            updateBaseUnitToggleState(variantIndex);
+            updateAllParentUnitDisplays(variantIndex);
+            updateAllConversionFormulas(variantIndex);
+            validateNoDuplicateUnits(variantIndex);
+            refreshAllSelect2ForVariant(variantIndex);
+            performRealTimeValidation(variantIndex);
+            toggleAdditionalUnitsSection(variantIndex);
+        });
+        
+        $(`#baseUnitSelect_${variantIndex}`).on('select2:select', function(e) {
+            const selectedData = e.params.data;
+            showSuccessMessage(`Variant ${variantIndex + 1}: Base unit set to: ${selectedData.text}`);
+        });
+
+        $(`#baseUnitSelect_${variantIndex}`).on('blur', function() {
+            validateBaseUnit(variantIndex);
+        });
+
+        $(`#baseUnitDefault_${variantIndex}`).on('change', function() {
+            handleDefaultSellingToggle(this, variantIndex);
+            performRealTimeValidation(variantIndex);
+        });
+
+        $(`.add-unit-btn[data-variant="${variantIndex}"]`).on('click', function() {
+            addNewUnitRow(variantIndex);
+        });
+
+        initializeExistingUnitRows(variantIndex);
+        
+        toggleAdditionalUnitsSection(variantIndex);
+        
+        updateBaseUnitToggleState(variantIndex);
+        updateDefaultSellingIndicators(variantIndex);
+    }
+
+    function validateVariant(variantIndex) {
+        const errors = [];
+        
+        const baseValidation = validateBaseUnit(variantIndex);
+        if (!baseValidation.isValid) {
+            errors.push(...baseValidation.errors);
+        }
+        
+        const hierarchyValidation = validateUnitHierarchy(variantIndex);
+        if (!hierarchyValidation.isValid) {
+            errors.push(...hierarchyValidation.errors);
+        }
+        
+        const defaultSellingValidation = validateDefaultSellingUnit(variantIndex);
+        if (!defaultSellingValidation.isValid) {
+            errors.push(...defaultSellingValidation.errors);
+        }
+        
+        const duplicateValidation = validateNoDuplicateUnits(variantIndex);
+        if (!duplicateValidation.isValid) {
+            errors.push(...duplicateValidation.errors);
+        }
+        
+        const conversionValidation = validateConversionCalculations(variantIndex);
+        if (!conversionValidation.isValid) {
+            errors.push(...conversionValidation.errors);
+        }
+        
+        return errors;
+    }
+
+    function validateBaseUnit(variantIndex) {
+        const baseUnitSelect = $(`#baseUnitSelect_${variantIndex}`);
         const value = baseUnitSelect.val();
         const errors = [];
         
@@ -395,24 +406,6 @@
         };
     }
 
-    function showError(element, message) {
-        const $element = $(element);
-        $element.addClass('is-invalid');
-        
-        let feedback = $element.siblings('.invalid-feedback');
-        if (feedback.length === 0) {
-            feedback = $('<div class="invalid-feedback"></div>');
-            $element.after(feedback);
-        }
-        feedback.text(message);
-    }
-
-    function clearError(element) {
-        const $element = $(element);
-        $element.removeClass('is-invalid').addClass('is-valid');
-        $element.siblings('.invalid-feedback').text('');
-    }
-
     function showFieldError(element, message) {
         const $element = $(element);
         $element.addClass('is-invalid').removeClass('is-valid');
@@ -437,21 +430,21 @@
         $('.alert-danger, .alert-warning').remove();
     }
 
-    function validateNoDuplicateUnits() {
+    function validateNoDuplicateUnits(variantIndex) {
         const errors = [];
         const selectedUnits = [];
-        const baseUnitId = $('#baseUnitSelect').val();
+        const baseUnitId = $(`#baseUnitSelect_${variantIndex}`).val();
         
         if (baseUnitId) {
             selectedUnits.push({
                 id: baseUnitId,
-                name: $('#baseUnitSelect option:selected').text(),
-                element: $('#baseUnitSelect'),
+                name: $(`#baseUnitSelect_${variantIndex} option:selected`).text(),
+                element: $(`#baseUnitSelect_${variantIndex}`),
                 type: 'base'
             });
         }
         
-        $('#additionalUnitsContainer .unit-row').each(function(index) {
+        $(`#additionalUnitsContainer_${variantIndex} .unit-row`).each(function(index) {
             const row = $(this);
             const unitSelect = row.find('.unit-select');
             const unitId = unitSelect.val();
@@ -494,9 +487,9 @@
         };
     }
 
-    function validateConversionCalculations() {
+    function validateConversionCalculations(variantIndex) {
         const errors = [];
-        const rows = $('#additionalUnitsContainer .unit-row');
+        const rows = $(`#additionalUnitsContainer_${variantIndex} .unit-row`);
         
         rows.each(function(index) {
             const row = $(this);
@@ -505,7 +498,7 @@
             const quantity = parseFloat(row.find('.quantity-input').val());
             
             if (unitName && unitName !== 'Select Unit' && quantity) {
-                const totalBaseUnits = calculateTotalBaseUnits(row);
+                const totalBaseUnits = calculateTotalBaseUnits(row, variantIndex);
                 
                 if (totalBaseUnits === null) {
                     errors.push(`Cannot calculate conversion for "${unitName}" - check parent unit configurations`);
@@ -542,7 +535,7 @@
             </div>
         `);
         
-        //$('.card-body').prepend(alert);
+        $('.container-fluid').prepend(alert);
         
         setTimeout(function() {
             alert.fadeOut();
@@ -564,13 +557,13 @@
         }
     }
 
-    function updateBaseUnitToggleState() {
-        const baseUnitSelected = $('#baseUnitSelect').val() !== '';
-        const baseUnitToggle = $('#baseUnitDefault');
+    function updateBaseUnitToggleState(variantIndex) {
+        const baseUnitSelected = $(`#baseUnitSelect_${variantIndex}`).val() !== '';
+        const baseUnitToggle = $(`#baseUnitDefault_${variantIndex}`);
         
         if (baseUnitSelected) {
             baseUnitToggle.prop('disabled', false);
-            if (!hasDefaultSellingUnit()) {
+            if (!hasDefaultSellingUnit(variantIndex)) {
                 baseUnitToggle.prop('checked', true);
             }
         } else {
@@ -578,12 +571,12 @@
         }
     }
 
-    function handleDefaultSellingToggle(toggleElement) {
+    function handleDefaultSellingToggle(toggleElement, variantIndex) {
         const $toggle = $(toggleElement);
         const isChecked = $toggle.prop('checked');
         
         if (isChecked) {
-            $('.default-selling-toggle').not($toggle).each(function() {
+            $(`.variant-card[data-variant-index="${variantIndex}"] .default-selling-toggle`).not($toggle).each(function() {
                 const $otherToggle = $(this);
                 if ($otherToggle.prop('checked')) {
                     $otherToggle.prop('checked', false);
@@ -602,25 +595,25 @@
                 $label.removeClass('fw-bold');
             }, 2000);
             
-            const unitName = getToggleUnitName($toggle);
-            showSuccessMessage(`Default selling unit set to: ${unitName}`);
+            const unitName = getToggleUnitName($toggle, variantIndex);
+            showSuccessMessage(`Variant ${variantIndex + 1}: Default selling unit set to: ${unitName}`);
             
         } else {
-            const baseUnitToggle = $('#baseUnitDefault');
-            if (!hasAnyDefaultSellingUnit()) {
+            const baseUnitToggle = $(`#baseUnitDefault_${variantIndex}`);
+            if (!hasAnyDefaultSellingUnit(variantIndex)) {
                 baseUnitToggle.prop('checked', true);
-                showSuccessMessage('Default selling unit reverted to base unit');
+                showSuccessMessage(`Variant ${variantIndex + 1}: Default selling unit reverted to base unit`);
             }
         }
         
-        updateDefaultSellingIndicators();
+        updateDefaultSellingIndicators(variantIndex);
     }
     
-    function getToggleUnitName(toggleElement) {
+    function getToggleUnitName(toggleElement, variantIndex) {
         const $toggle = $(toggleElement);
         
-        if ($toggle.attr('id') === 'baseUnitDefault') {
-            const baseUnitText = $('#baseUnitSelect option:selected').text();
+        if ($toggle.attr('id') === `baseUnitDefault_${variantIndex}`) {
+            const baseUnitText = $(`#baseUnitSelect_${variantIndex} option:selected`).text();
             return baseUnitText !== 'Select Base Unit' ? baseUnitText : 'Base Unit';
         } else {
             const $row = $toggle.closest('.unit-row');
@@ -629,12 +622,12 @@
         }
     }
     
-    function hasAnyDefaultSellingUnit() {
-        return $('.default-selling-toggle:checked').length > 0;
+    function hasAnyDefaultSellingUnit(variantIndex) {
+        return $(`.variant-card[data-variant-index="${variantIndex}"] .default-selling-toggle:checked`).length > 0;
     }
     
-    function updateDefaultSellingIndicators() {
-        $('.default-selling-toggle').each(function() {
+    function updateDefaultSellingIndicators(variantIndex) {
+        $(`.variant-card[data-variant-index="${variantIndex}"] .default-selling-toggle`).each(function() {
             const $toggle = $(this);
             const $label = $toggle.next('label');
             const $row = $toggle.closest('.unit-row, .form-text');
@@ -655,8 +648,8 @@
         });
     }
 
-    function initializeExistingUnitRows() {
-        $('#additionalUnitsContainer .unit-row').each(function(index) {
+    function initializeExistingUnitRows(variantIndex) {
+        $(`#additionalUnitsContainer_${variantIndex} .unit-row`).each(function(index) {
             const row = $(this);
             
             const unitSelect = row.find('.unit-select');
@@ -668,65 +661,48 @@
                 });
             }
             
-            addRowEventHandlers(row);
+            addRowEventHandlers(row, variantIndex);
             
-            updateConversionFormula(row);
+            updateConversionFormula(row, variantIndex);
         });
         
-        updateNoUnitsMessage();
+        updateNoUnitsMessage(variantIndex);
     }
 
-    function hasDefaultSellingUnit() {
-        return hasAnyDefaultSellingUnit();
+    function hasDefaultSellingUnit(variantIndex) {
+        return hasAnyDefaultSellingUnit(variantIndex);
     }
 
     function showSuccessMessage(message, duration = 3000) {
-        let alert = $('.alert-success');
-        if (alert.length === 0) {
-            alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">' +
-                     '<span class="alert-message"></span>' +
-                     '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                     '</div>');
-            //$('.card-body').prepend(alert);
-        }
         
-        alert.find('.alert-message').text(message);
-        alert.show();
+    }
+
+    function performRealTimeValidation(variantIndex) {
+        const debouncedValidation = debounce(function() {
+            const variantErrors = validateVariant(variantIndex);
+            
+            if (variantErrors.length === 0) {
+                showValidationSuccess(variantIndex);
+            } else {
+                showValidationWarnings(variantErrors, variantIndex);
+            }
+        }, 500);
         
-        setTimeout(function() {
-            alert.fadeOut();
-        }, duration);
+        debouncedValidation();
     }
     
-    function highlightAffectedFormulas(changedRow) {
-        const changedLevel = parseInt(changedRow.data('level'));
+    function showValidationSuccess(variantIndex) {
+        $(`.variant-card[data-variant-index="${variantIndex}"] .alert-warning`).fadeOut();
         
-        const changedFormula = changedRow.find('.conversion-formula');
-        changedFormula.addClass('formula-highlight');
+        const submitBtn = $('button[type="submit"]');
+        submitBtn.removeClass('btn-secondary').addClass('btn-primary');
+    }
+    
+    function showValidationWarnings(errors, variantIndex) {
+        if (errors.length === 0) return;
         
-        $('#additionalUnitsContainer .unit-row').each(function() {
-            const row = $(this);
-            const level = parseInt(row.data('level'));
-            
-            if (level > changedLevel) {
-                const formula = row.find('.conversion-formula');
-                formula.addClass('formula-highlight');
-                
-                setTimeout(function() {
-                    formula.removeClass('formula-highlight').addClass('formula-success');
-                    setTimeout(function() {
-                        formula.removeClass('formula-success');
-                    }, 1000);
-                }, 500);
-            }
-        });
-        
-        setTimeout(function() {
-            changedFormula.removeClass('formula-highlight').addClass('formula-success');
-            setTimeout(function() {
-                changedFormula.removeClass('formula-success');
-            }, 1000);
-        }, 500);
+        const submitBtn = $('button[type="submit"]');
+        submitBtn.removeClass('btn-primary').addClass('btn-secondary');
     }
     
     function debounce(func, wait, immediate) {
@@ -747,93 +723,22 @@
             if (callNow) func.apply(context, args);
         };
     }
-    
-    function performRealTimeValidation() {
-        const debouncedValidation = debounce(function() {
-            clearAllValidationStates();
-            
-            const baseValidation = validateBaseUnit();
-            const hierarchyValidation = validateUnitHierarchy();
-            const duplicateValidation = validateNoDuplicateUnits();
-            const conversionValidation = validateConversionCalculations();
-            const defaultSellingValidation = validateDefaultSellingUnit();
-            
-            const allValid = baseValidation.isValid && 
-                           hierarchyValidation.isValid && 
-                           duplicateValidation.isValid && 
-                           conversionValidation.isValid && 
-                           defaultSellingValidation.isValid;
-            
-            if (allValid) {
-                showValidationSuccess();
-            } else {
-                const allErrors = [
-                    ...baseValidation.errors,
-                    ...hierarchyValidation.errors,
-                    ...duplicateValidation.errors,
-                    ...conversionValidation.errors,
-                    ...defaultSellingValidation.errors
-                ];
-                showValidationWarnings(allErrors);
-            }
-        }, 500);
-        
-        debouncedValidation();
-    }
-    
-    function showValidationSuccess() {
-        $('.alert-warning').fadeOut();
-        
-        const submitBtn = $('button[type="submit"]');
-        submitBtn.removeClass('btn-secondary').addClass('btn-primary');
-        submitBtn.find('i').removeClass('fa-exclamation-triangle').addClass('fa-check');
-    }
-    
-    function showValidationWarnings(errors) {
-        if (errors.length === 0) return;
-        
-        const submitBtn = $('button[type="submit"]');
-        submitBtn.removeClass('btn-primary').addClass('btn-secondary');
-        submitBtn.find('i').removeClass('fa-check').addClass('fa-exclamation-triangle');
-        
-        let alert = $('.alert-warning');
-        if (alert.length === 0) {
-            alert = $(`
-                <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Validation Warnings:</h6>
-                    <ul class="mb-0 validation-warnings-list"></ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            `);
-            //$('.card-body').prepend(alert);
-        }
-        
-        const errorList = errors.slice(0, 3).map(error => `<li>${error}</li>`).join('');
-        const moreErrors = errors.length > 3 ? `<li><em>... and ${errors.length - 3} more issues</em></li>` : '';
-        
-        alert.find('.validation-warnings-list').html(errorList + moreErrors);
-        alert.show();
-        
-        setTimeout(function() {
-            alert.fadeOut();
-        }, 8000);
-    }
 
-    function toggleAdditionalUnitsSection() {
-        const baseUnitSelected = $('#baseUnitSelect').val() !== '';
-        const additionalUnitsSection = $('#additionalUnitsSection');
+    function toggleAdditionalUnitsSection(variantIndex) {
+        const baseUnitSelected = $(`#baseUnitSelect_${variantIndex}`).val() !== '';
+        const additionalUnitsSection = $(`#additionalUnitsSection_${variantIndex}`);
         
         if (baseUnitSelected) {
             additionalUnitsSection.show();
-            updateNoUnitsMessage();
+            updateNoUnitsMessage(variantIndex);
         } else {
             additionalUnitsSection.hide();
         }
     }
 
-    function updateNoUnitsMessage() {
-        const hasUnits = $('#additionalUnitsContainer .unit-row').length > 0;
-        const noUnitsMessage = $('#noUnitsMessage');
+    function updateNoUnitsMessage(variantIndex) {
+        const hasUnits = $(`#additionalUnitsContainer_${variantIndex} .unit-row`).length > 0;
+        const noUnitsMessage = $(`#noUnitsMessage_${variantIndex}`);
         
         if (hasUnits) {
             noUnitsMessage.hide();
@@ -842,36 +747,36 @@
         }
     }
 
-    function addNewUnitRow() {
-        const container = $('#additionalUnitsContainer');
+    function addNewUnitRow(variantIndex) {
+        const container = $(`#additionalUnitsContainer_${variantIndex}`);
         const currentRows = container.find('.unit-row').length;
         
         if (currentRows >= 5) {
-            showErrorMessage('Maximum hierarchy depth reached (5 levels maximum)');
+            showErrorMessage(`Variant ${variantIndex + 1}: Maximum hierarchy depth reached (5 levels maximum)`);
             return;
         }
         
         const newIndex = currentRows;
         
-        const newRow = createUnitRowTemplate(newIndex);
+        const newRow = createUnitRowTemplate(newIndex, variantIndex);
         container.append(newRow);
         
-        initializeNewRowSelect2(newIndex);
+        initializeNewRowSelect2(newIndex, variantIndex);
         
-        updateNoUnitsMessage();
+        updateNoUnitsMessage(variantIndex);
         
-        updateAllParentUnitDisplays();
+        updateAllParentUnitDisplays(variantIndex);
         
-        showSuccessMessage(`Added new unit level ${newIndex + 1}`);
+        showSuccessMessage(`Variant ${variantIndex + 1}: Added new unit level ${newIndex + 1}`);
         
         setTimeout(function() {
-            const newRow = $(`.unit-row[data-index="${newIndex}"]`);
+            const newRow = $(`.unit-row[data-variant="${variantIndex}"][data-index="${newIndex}"]`);
             newRow.find('.unit-select').select2('open');
         }, 100);
     }
 
-    function createUnitRowTemplate(index) {
-        const level = $('#additionalUnitsContainer .unit-row').length;
+    function createUnitRowTemplate(index, variantIndex) {
+        const level = $(`#additionalUnitsContainer_${variantIndex} .unit-row`).length;
         const availableUnits = @json($availableUnits);
         
         let unitOptions = '<option value="">Select Unit</option>';
@@ -880,11 +785,11 @@
         });
         
         const template = `
-            <div class="unit-row mb-3 p-3 border rounded" data-level="${level}" data-index="${index}">
+            <div class="unit-row mb-3 p-3 border rounded" data-level="${level}" data-index="${index}" data-variant="${variantIndex}">
                 <div class="row">
                     <div class="col-md-3">
                         <label class="form-label">Unit Name <span class="text-danger">*</span></label>
-                        <select class="form-select unit-select" name="additional_units[${index}][unit_id]" required>
+                        <select class="form-select unit-select" name="variants[${variantIndex}][additional_units][${index}][unit_id]" data-variant="${variantIndex}" required>
                             ${unitOptions}
                         </select>
                         <div class="invalid-feedback">
@@ -894,7 +799,8 @@
                     <div class="col-md-2">
                         <label class="form-label">Quantity <span class="text-danger">*</span></label>
                         <input type="number" class="form-control quantity-input" 
-                               name="additional_units[${index}][quantity]" 
+                               name="variants[${variantIndex}][additional_units][${index}][quantity]" 
+                               data-variant="${variantIndex}"
                                min="0.01" step="0.01" placeholder="1.00" required>
                         <div class="invalid-feedback">
                             Please enter a valid quantity.
@@ -904,14 +810,15 @@
                         <label class="form-label">Per Parent Unit</label>
                         <input type="text" class="parent-unit-display" readonly 
                                placeholder="Select base unit first">
-                        <input type="hidden" class="parent-unit-id" name="additional_units[${index}][parent_id]">
+                        <input type="hidden" class="parent-unit-id" name="variants[${variantIndex}][additional_units][${index}][parent_id]">
                     </div>
                     <div class="col-md-3">
                         <div class="form-check form-switch mt-4">
                             <input class="form-check-input default-selling-toggle" type="checkbox" 
-                                   name="additional_units[${index}][is_default_selling_unit]" value="1"
-                                   id="defaultSelling_${index}">
-                            <label class="form-check-label" for="defaultSelling_${index}">
+                                   name="variants[${variantIndex}][additional_units][${index}][is_default_selling_unit]" value="1"
+                                   id="defaultSelling_${variantIndex}_${index}"
+                                   data-variant="${variantIndex}">
+                            <label class="form-check-label" for="defaultSelling_${variantIndex}_${index}">
                                 Default Selling Unit
                             </label>
                         </div>
@@ -923,6 +830,7 @@
                         <label class="form-label">&nbsp;</label>
                         <div>
                             <button type="button" class="btn btn-outline-danger btn-sm remove-unit-btn" 
+                                    data-variant="${variantIndex}"
                                     title="Remove Unit">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -943,8 +851,8 @@
         return $(template);
     }
 
-    function initializeNewRowSelect2(index) {
-        const row = $(`.unit-row[data-index="${index}"]`);
+    function initializeNewRowSelect2(index, variantIndex) {
+        const row = $(`.unit-row[data-variant="${variantIndex}"][data-index="${index}"]`);
         const unitSelect = row.find('.unit-select');
         
         unitSelect.select2({
@@ -957,18 +865,16 @@
             escapeMarkup: function(markup) { return markup; }
         });
         
-        addRowEventHandlers(row);
+        addRowEventHandlers(row, variantIndex);
         
         unitSelect.on('select2:select', function(e) {
             const selectedData = e.params.data;
-            showSuccessMessage(`Selected unit: ${selectedData.text}`);
-            
+            showSuccessMessage(`Variant ${variantIndex + 1}: Selected unit: ${selectedData.text}`);
             $(this).trigger('change');
         });
         
         unitSelect.on('select2:clear', function(e) {
-            showSuccessMessage('Unit selection cleared');
-            
+            showSuccessMessage(`Variant ${variantIndex + 1}: Unit selection cleared`);
             $(this).trigger('change');
         });
     }
@@ -1005,8 +911,8 @@
         return isUsed;
     }
     
-    function initializeAllSelect2() {
-        $('#baseUnitSelect').select2({
+    function initializeAllSelect2ForVariant(variantIndex) {
+        $(`#baseUnitSelect_${variantIndex}`).select2({
             placeholder: 'Select Base Unit',
             allowClear: true,
             width: '100%',
@@ -1015,7 +921,7 @@
             escapeMarkup: function(markup) { return markup; }
         });
         
-        $('.unit-select').each(function(index) {
+        $(`.variant-card[data-variant-index="${variantIndex}"] .unit-select`).each(function(index) {
             const $select = $(this);
             if (!$select.hasClass('select2-hidden-accessible')) {
                 $select.select2({
@@ -1031,8 +937,8 @@
         });
     }
     
-    function refreshAllSelect2() {
-        $('#baseUnitSelect').select2('destroy').select2({
+    function refreshAllSelect2ForVariant(variantIndex) {
+        $(`#baseUnitSelect_${variantIndex}`).select2('destroy').select2({
             placeholder: 'Select Base Unit',
             allowClear: true,
             width: '100%',
@@ -1041,7 +947,7 @@
             escapeMarkup: function(markup) { return markup; }
         });
         
-        $('.unit-select').each(function() {
+        $(`.variant-card[data-variant-index="${variantIndex}"] .unit-select`).each(function() {
             const $select = $(this);
             const currentValue = $select.val();
             const row = $select.closest('.unit-row');
@@ -1062,7 +968,7 @@
         });
     }
 
-    function addRowEventHandlers(row) {
+    function addRowEventHandlers(row, variantIndex) {
         const unitSelect = row.find('.unit-select');
         const quantityInput = row.find('.quantity-input');
         const defaultToggle = row.find('.default-selling-toggle');
@@ -1073,22 +979,19 @@
             const selectedText = $select.find('option:selected').text();
             
             validateUnitSelection(this);
-            
-            updateParentUnitDisplay(row);
-            updateConversionFormula(row);
-            updateConversionChain(row);
-            
-            updateAllParentUnitDisplays();
-            updateAllConversionFormulas();
-            
-            validateNoDuplicateUnits();
-            refreshAllSelect2();
+            updateParentUnitDisplay(row, variantIndex);
+            updateConversionFormula(row, variantIndex);
+            updateConversionChain(row, variantIndex);
+            updateAllParentUnitDisplays(variantIndex);
+            updateAllConversionFormulas(variantIndex);
+            validateNoDuplicateUnits(variantIndex);
+            refreshAllSelect2ForVariant(variantIndex);
             
             if (selectedText && selectedText !== 'Select Unit') {
-                showSuccessMessage(`Unit selected: ${selectedText}`, 2000);
+                showSuccessMessage(`Variant ${variantIndex + 1}: Unit selected: ${selectedText}`, 2000);
             }
             
-            highlightAffectedFormulas(row);
+            highlightAffectedFormulas(row, variantIndex);
         });
         
         unitSelect.on('blur', function() {
@@ -1100,28 +1003,22 @@
             const $input = $(input);
             
             validateQuantityInput(input);
-            
             clearTimeout($input.data('debounceTimeout'));
             
             const formulaContainer = row.find('.conversion-formula');
             formulaContainer.addClass('formula-highlight');
             
             const timeout = setTimeout(function() {
-                updateConversionFormula(row);
-                
-                updateConversionChain(row);
-                
-                validateConversionCalculations();
-                
-                updateAllParentUnitDisplays();
+                updateConversionFormula(row, variantIndex);
+                updateConversionChain(row, variantIndex);
+                validateConversionCalculations(variantIndex);
+                updateAllParentUnitDisplays(variantIndex);
                 
                 formulaContainer.removeClass('formula-highlight');
-                
                 formulaContainer.addClass('formula-success');
                 setTimeout(function() {
                     formulaContainer.removeClass('formula-success');
                 }, 1000);
-                
             }, 300);
             
             $input.data('debounceTimeout', timeout);
@@ -1132,16 +1029,16 @@
             clearTimeout($input.data('debounceTimeout'));
             
             validateQuantityInput(this);
-            updateConversionFormula(row);
-            updateConversionChain(row);
-            validateConversionCalculations();
-            updateAllParentUnitDisplays();
+            updateConversionFormula(row, variantIndex);
+            updateConversionChain(row, variantIndex);
+            validateConversionCalculations(variantIndex);
+            updateAllParentUnitDisplays(variantIndex);
         });
         
         quantityInput.on('blur', function() {
             validateQuantityInput(this);
-            updateConversionFormula(row);
-            updateConversionChain(row);
+            updateConversionFormula(row, variantIndex);
+            updateConversionChain(row, variantIndex);
         });
         
         quantityInput.on('keypress', function(e) {
@@ -1159,13 +1056,13 @@
         });
         
         defaultToggle.on('change', function() {
-            handleDefaultSellingToggle(this);
-            validateDefaultSellingUnit();
-            performRealTimeValidation();
+            handleDefaultSellingToggle(this, variantIndex);
+            validateDefaultSellingUnit(variantIndex);
+            performRealTimeValidation(variantIndex);
         });
         
         removeBtn.on('click', function() {
-            removeUnitRow(row);
+            removeUnitRow(row, variantIndex);
         });
         
         row.on('mouseenter', function() {
@@ -1174,18 +1071,45 @@
             $(this).removeClass('border-primary');
         });
     }
-    
-    function updateDependentFormulas(changedRow) {
-        updateConversionChain(changedRow);
+
+    function highlightAffectedFormulas(changedRow, variantIndex) {
+        const changedLevel = parseInt(changedRow.data('level'));
+        
+        const changedFormula = changedRow.find('.conversion-formula');
+        changedFormula.addClass('formula-highlight');
+        
+        $(`#additionalUnitsContainer_${variantIndex} .unit-row`).each(function() {
+            const row = $(this);
+            const level = parseInt(row.data('level'));
+            
+            if (level > changedLevel) {
+                const formula = row.find('.conversion-formula');
+                formula.addClass('formula-highlight');
+                
+                setTimeout(function() {
+                    formula.removeClass('formula-highlight').addClass('formula-success');
+                    setTimeout(function() {
+                        formula.removeClass('formula-success');
+                    }, 1000);
+                }, 500);
+            }
+        });
+        
+        setTimeout(function() {
+            changedFormula.removeClass('formula-highlight').addClass('formula-success');
+            setTimeout(function() {
+                changedFormula.removeClass('formula-success');
+            }, 1000);
+        }, 500);
     }
 
-    function updateParentUnitDisplay(row) {
+    function updateParentUnitDisplay(row, variantIndex) {
         const level = parseInt(row.data('level'));
         const parentDisplay = row.find('.parent-unit-display');
         const parentIdInput = row.find('.parent-unit-id');
         
         if (level === 0) {
-            const baseUnitText = $('#baseUnitSelect option:selected').text();
+            const baseUnitText = $(`#baseUnitSelect_${variantIndex} option:selected`).text();
             if (baseUnitText && baseUnitText !== 'Select Base Unit') {
                 parentDisplay.val(baseUnitText.trim());
                 parentIdInput.val('');
@@ -1194,7 +1118,7 @@
                 parentIdInput.val('');
             }
         } else {
-            const previousRow = $('#additionalUnitsContainer .unit-row').eq(level - 1);
+            const previousRow = $(`#additionalUnitsContainer_${variantIndex} .unit-row`).eq(level - 1);
             const previousUnitText = previousRow.find('.unit-select option:selected').text();
             const previousUnitId = previousRow.data('unit-id');
             
@@ -1208,13 +1132,13 @@
         }
     }
 
-    function updateAllParentUnitDisplays() {
-        $('#additionalUnitsContainer .unit-row').each(function() {
-            updateParentUnitDisplay($(this));
+    function updateAllParentUnitDisplays(variantIndex) {
+        $(`#additionalUnitsContainer_${variantIndex} .unit-row`).each(function() {
+            updateParentUnitDisplay($(this), variantIndex);
         });
     }
 
-    function updateConversionFormula(row) {
+    function updateConversionFormula(row, variantIndex) {
         const unitText = row.find('.unit-select option:selected').text();
         const quantity = row.find('.quantity-input').val();
         const parentText = row.find('.parent-unit-display').val();
@@ -1222,8 +1146,6 @@
         const breakdownElement = row.find('.conversion-breakdown');
         const formulaContainer = row.find('.conversion-formula');
         const detailsContainer = row.find('.conversion-details');
-        
-        const isValid = validateAndHighlightFormula(row);
         
         if (unitText && unitText !== 'Select Unit' && quantity && parentText && 
             parentText !== 'Select base unit first' && parentText !== 'Configure previous unit first') {
@@ -1241,13 +1163,12 @@
             let breakdown = '';
             
             if (level > 0) {
-                const totalBaseUnits = calculateTotalBaseUnits(row);
-                const baseUnitText = $('#baseUnitSelect option:selected').text();
+                const totalBaseUnits = calculateTotalBaseUnits(row, variantIndex);
+                const baseUnitText = $(`#baseUnitSelect_${variantIndex} option:selected`).text();
                 
                 if (totalBaseUnits && totalBaseUnits > 0 && baseUnitText && baseUnitText !== 'Select Base Unit') {
                     formula += ` = ${totalBaseUnits} ${baseUnitText}`;
-                    
-                    breakdown = buildConversionBreakdown(row, totalBaseUnits, baseUnitText);
+                    breakdown = buildConversionBreakdown(row, totalBaseUnits, baseUnitText, variantIndex);
                 } else if (totalBaseUnits === null) {
                     formula += ' = <span class="text-primary">Configure parent units first</span>';
                 }
@@ -1272,12 +1193,11 @@
                 message += 'Configure parent unit to see conversion';
             }
             
-            // formulaElement.html(message);
             detailsContainer.hide();
         }
     }
     
-    function buildConversionBreakdown(row, totalBaseUnits, baseUnitText) {
+    function buildConversionBreakdown(row, totalBaseUnits, baseUnitText, variantIndex) {
         const level = parseInt(row.data('level'));
         const unitText = row.find('.unit-select option:selected').text();
         const quantity = parseFloat(row.find('.quantity-input').val());
@@ -1291,7 +1211,7 @@
         stepByStep.push(`1 ${unitText} = ${quantity}`);
         
         for (let i = level - 1; i >= 0; i--) {
-            const parentRow = $('#additionalUnitsContainer .unit-row').eq(i);
+            const parentRow = $(`#additionalUnitsContainer_${variantIndex} .unit-row`).eq(i);
             const parentQuantity = parseFloat(parentRow.find('.quantity-input').val());
             const parentUnitText = parentRow.find('.unit-select option:selected').text();
             
@@ -1302,7 +1222,7 @@
                 if (i === 0) {
                     stepByStep.push(`${previousTotal} ${parentUnitText} × ${parentQuantity} = ${runningTotal} ${baseUnitText}`);
                 } else {
-                    const nextParentRow = $('#additionalUnitsContainer .unit-row').eq(i - 1);
+                    const nextParentRow = $(`#additionalUnitsContainer_${variantIndex} .unit-row`).eq(i - 1);
                     const nextParentUnitText = nextParentRow.find('.unit-select option:selected').text();
                     stepByStep.push(`${previousTotal} ${parentUnitText} × ${parentQuantity} = ${runningTotal} ${nextParentUnitText || 'units'}`);
                 }
@@ -1310,7 +1230,7 @@
         }
         
         if (level === 1) {
-            breakdown = `${quantity} ${$('#baseUnitSelect option:selected').text()}`;
+            breakdown = `${quantity} ${$(`#baseUnitSelect_${variantIndex} option:selected`).text()}`;
         } else {
             breakdown = stepByStep.join(' → ');
         }
@@ -1318,53 +1238,17 @@
         return breakdown;
     }
     
-    function calculateConversionChain(fromRow, toLevel) {
-        const fromLevel = parseInt(fromRow.data('level'));
-        const chain = [];
-        
-        if (fromLevel === toLevel) {
-            return [{ level: fromLevel, multiplier: 1, unit: fromRow.find('.unit-select option:selected').text() }];
-        }
-        
-        let currentLevel = fromLevel;
-        let multiplier = 1;
-        
-        while (currentLevel !== toLevel) {
-            const currentRow = $('#additionalUnitsContainer .unit-row').eq(currentLevel);
-            const quantity = parseFloat(currentRow.find('.quantity-input').val()) || 1;
-            const unitText = currentRow.find('.unit-select option:selected').text();
-            
-            chain.push({
-                level: currentLevel,
-                multiplier: multiplier,
-                quantity: quantity,
-                unit: unitText
-            });
-            
-            if (currentLevel > toLevel) {
-                multiplier /= quantity;
-                currentLevel--;
-            } else {
-                multiplier *= quantity;
-                currentLevel++;
-            }
-        }
-        
-        return chain;
-    }
-    
-    function updateConversionChain(changedRow) {
+    function updateConversionChain(changedRow, variantIndex) {
         const changedLevel = parseInt(changedRow.data('level'));
-        const allRows = $('#additionalUnitsContainer .unit-row');
+        const allRows = $(`#additionalUnitsContainer_${variantIndex} .unit-row`);
         
         allRows.each(function(index) {
             const currentRow = $(this);
             const currentLevel = parseInt(currentRow.data('level'));
             
             if (currentLevel > changedLevel) {
-                updateParentUnitDisplay(currentRow);
-                updateConversionFormula(currentRow);
-                
+                updateParentUnitDisplay(currentRow, variantIndex);
+                updateConversionFormula(currentRow, variantIndex);
                 highlightDependentUnit(currentRow, changedRow);
             }
         });
@@ -1372,64 +1256,21 @@
 
     function highlightDependentUnit(dependentRow, parentRow) {
         const formulaContainer = dependentRow.find('.conversion-formula');
-        
         formulaContainer.addClass('formula-highlight');
         
         setTimeout(function() {
             formulaContainer.removeClass('formula-highlight');
-            validateAndHighlightFormula(dependentRow);
         }, 1000);
     }
-    
-    function validateConversionHierarchy() {
-        const allRows = $('#additionalUnitsContainer .unit-row');
-        let isValid = true;
-        const errors = [];
-        
-        allRows.each(function(index) {
-            const row = $(this);
-            const level = parseInt(row.data('level'));
-            const unitText = row.find('.unit-select option:selected').text();
-            const quantity = parseFloat(row.find('.quantity-input').val());
-            
-            if (!unitText || unitText === 'Select Unit') {
-                errors.push(`Level ${level + 1}: Unit must be selected`);
-                isValid = false;
-            }
-            
-            if (!quantity || quantity <= 0) {
-                errors.push(`Level ${level + 1}: Quantity must be greater than 0`);
-                isValid = false;
-            }
-            
-            if (level > 0) {
-                const parentRow = allRows.eq(level - 1);
-                const parentUnitText = parentRow.find('.unit-select option:selected').text();
-                const parentQuantity = parseFloat(parentRow.find('.quantity-input').val());
-                
-                if (!parentUnitText || parentUnitText === 'Select Unit') {
-                    errors.push(`Level ${level + 1}: Parent unit (Level ${level}) must be configured first`);
-                    isValid = false;
-                }
-                
-                if (!parentQuantity || parentQuantity <= 0) {
-                    errors.push(`Level ${level + 1}: Parent unit quantity (Level ${level}) must be configured first`);
-                    isValid = false;
-                }
-            }
-        });
-        
-        return { isValid, errors };
-    }
 
-    function calculateTotalBaseUnits(row) {
+    function calculateTotalBaseUnits(row, variantIndex) {
         const level = parseInt(row.data('level'));
         let total = parseFloat(row.find('.quantity-input').val()) || 0;
         
         if (total <= 0) return null;
         
         for (let i = level - 1; i >= 0; i--) {
-            const parentRow = $('#additionalUnitsContainer .unit-row').eq(i);
+            const parentRow = $(`#additionalUnitsContainer_${variantIndex} .unit-row`).eq(i);
             const parentQuantity = parseFloat(parentRow.find('.quantity-input').val()) || 0;
             if (parentQuantity > 0) {
                 total *= parentQuantity;
@@ -1440,57 +1281,13 @@
         
         return Math.round(total * 10000) / 10000;
     }
-    
-    function getConversionRate(fromLevel, toLevel) {
-        if (fromLevel === toLevel) return 1;
-        
-        let rate = 1;
-        const startLevel = Math.min(fromLevel, toLevel);
-        const endLevel = Math.max(fromLevel, toLevel);
-        
-        for (let i = startLevel; i < endLevel; i++) {
-            const row = $('#additionalUnitsContainer .unit-row').eq(i);
-            const quantity = parseFloat(row.find('.quantity-input').val()) || 0;
-            if (quantity <= 0) return null;
-            rate *= quantity;
-        }
-        
-        return fromLevel > toLevel ? 1 / rate : rate;
-    }
-    
-    function validateAndHighlightFormula(row) {
-        const formulaContainer = row.find('.conversion-formula');
-        const unitText = row.find('.unit-select option:selected').text();
-        const quantity = parseFloat(row.find('.quantity-input').val());
-        const parentText = row.find('.parent-unit-display').val();
-        
-        formulaContainer.removeClass('formula-highlight formula-error formula-success');
-        
-        if (!unitText || unitText === 'Select Unit') {
-            formulaContainer.addClass('formula-highlight');
-            return false;
-        }
-        
-        if (!quantity || quantity <= 0) {
-            formulaContainer.addClass('formula-error');
-            return false;
-        }
-        
-        if (!parentText || parentText.includes('Select') || parentText.includes('Configure')) {
-            formulaContainer.addClass('formula-highlight');
-            return false;
-        }
-        
-        formulaContainer.addClass('formula-success');
-        return true;
-    }
 
-    function removeUnitRow(row) {
+    function removeUnitRow(row, variantIndex) {
         const level = parseInt(row.data('level'));
-        const totalRows = $('#additionalUnitsContainer .unit-row').length;
+        const totalRows = $(`#additionalUnitsContainer_${variantIndex} .unit-row`).length;
         
         if (level < totalRows - 1) {
-            showErrorMessage('Cannot remove this unit as it has dependent child units. Remove child units first.');
+            showErrorMessage(`Variant ${variantIndex + 1}: Cannot remove this unit as it has dependent child units. Remove child units first.`);
             return;
         }
         
@@ -1499,42 +1296,38 @@
             
             row.remove();
             
-            if (wasDefaultSelling && !hasAnyDefaultSellingUnit()) {
-                $('#baseUnitDefault').prop('checked', true);
-                showSuccessMessage('Unit removed successfully. Default selling unit reverted to base unit.');
+            if (wasDefaultSelling && !hasAnyDefaultSellingUnit(variantIndex)) {
+                $(`#baseUnitDefault_${variantIndex}`).prop('checked', true);
+                showSuccessMessage(`Variant ${variantIndex + 1}: Unit removed successfully. Default selling unit reverted to base unit.`);
             } else {
-                showSuccessMessage('Unit removed successfully');
+                showSuccessMessage(`Variant ${variantIndex + 1}: Unit removed successfully`);
             }
             
-            reindexUnitRows();
-            
-            updateAllParentUnitDisplays();
-            
-            updateAllConversionFormulas();
-            
-            updateDefaultSellingIndicators();
-            
-            updateNoUnitsMessage();
+            reindexUnitRows(variantIndex);
+            updateAllParentUnitDisplays(variantIndex);
+            updateAllConversionFormulas(variantIndex);
+            updateDefaultSellingIndicators(variantIndex);
+            updateNoUnitsMessage(variantIndex);
         }
     }
 
-    function reindexUnitRows() {
-        $('#additionalUnitsContainer .unit-row').each(function(index) {
+    function reindexUnitRows(variantIndex) {
+        $(`#additionalUnitsContainer_${variantIndex} .unit-row`).each(function(index) {
             const row = $(this);
             
             row.attr('data-level', index);
             row.attr('data-index', index);
             
-            row.find('select[name*="additional_units"]').attr('name', `additional_units[${index}][unit_id]`);
-            row.find('input[name*="additional_units"][name*="quantity"]').attr('name', `additional_units[${index}][quantity]`);
-            row.find('input[name*="additional_units"][name*="parent_id"]').attr('name', `additional_units[${index}][parent_id]`);
-            row.find('input[name*="additional_units"][name*="is_default_selling_unit"]').attr('name', `additional_units[${index}][is_default_selling_unit]`);
+            row.find('select[name*="additional_units"]').attr('name', `variants[${variantIndex}][additional_units][${index}][unit_id]`);
+            row.find('input[name*="additional_units"][name*="quantity"]').attr('name', `variants[${variantIndex}][additional_units][${index}][quantity]`);
+            row.find('input[name*="additional_units"][name*="parent_id"]').attr('name', `variants[${variantIndex}][additional_units][${index}][parent_id]`);
+            row.find('input[name*="additional_units"][name*="is_default_selling_unit"]').attr('name', `variants[${variantIndex}][additional_units][${index}][is_default_selling_unit]`);
         });
     }
 
-    function updateAllConversionFormulas() {
-        $('#additionalUnitsContainer .unit-row').each(function() {
-            updateConversionFormula($(this));
+    function updateAllConversionFormulas(variantIndex) {
+        $(`#additionalUnitsContainer_${variantIndex} .unit-row`).each(function() {
+            updateConversionFormula($(this), variantIndex);
         });
     }
 
@@ -1545,24 +1338,20 @@
                      '<span class="alert-message"></span>' +
                      '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
                      '</div>');
-            //$('.card-body').prepend(alert);
+            $('.container-fluid').prepend(alert);
         }
         
         alert.find('.alert-message').text(message);
+        alert.show();
         
         setTimeout(function() {
             alert.fadeOut();
         }, 5000);
     }
 
-    function validateUnitHierarchy() {
-        const rows = $('#additionalUnitsContainer .unit-row');
+    function validateUnitHierarchy(variantIndex) {
+        const rows = $(`#additionalUnitsContainer_${variantIndex} .unit-row`);
         const errors = [];
-        
-        const hierarchyValidation = validateConversionHierarchy();
-        if (!hierarchyValidation.isValid) {
-            errors.push(...hierarchyValidation.errors);
-        }
         
         rows.each(function(index) {
             const row = $(this);
@@ -1594,71 +1383,29 @@
             }
         });
         
-        if (errors.length === 0 && rows.length > 0) {
-            const chainValidation = validateCompleteConversionChain();
-            if (!chainValidation.isValid) {
-                errors.push('Conversion chain validation failed: ' + chainValidation.error);
-            }
-        }
-        
         return {
             isValid: errors.length === 0,
             errors: errors
         };
     }
     
-    function validateCompleteConversionChain() {
-        const rows = $('#additionalUnitsContainer .unit-row');
-        
-        if (rows.length === 0) {
-            return { isValid: true };
-        }
-        
-        const topRow = rows.last();
-        const totalBaseUnits = calculateTotalBaseUnits(topRow);
-        
-        if (totalBaseUnits === null || totalBaseUnits <= 0) {
-            return { 
-                isValid: false, 
-                error: 'Cannot calculate complete conversion chain. Check all unit quantities.' 
-            };
-        }
-        
-        for (let i = 0; i < rows.length - 1; i++) {
-            const currentRow = $(rows[i]);
-            const nextRow = $(rows[i + 1]);
-            
-            const currentQuantity = parseFloat(currentRow.find('.quantity-input').val());
-            const nextQuantity = parseFloat(nextRow.find('.quantity-input').val());
-            
-            if (!currentQuantity || !nextQuantity || currentQuantity <= 0 || nextQuantity <= 0) {
-                return { 
-                    isValid: false, 
-                    error: `Invalid conversion between level ${i + 1} and level ${i + 2}` 
-                };
-            }
-        }
-        
-        return { isValid: true };
-    }
-    
-    function validateDefaultSellingUnit() {
-        const checkedToggles = $('.default-selling-toggle:checked');
+    function validateDefaultSellingUnit(variantIndex) {
+        const checkedToggles = $(`.variant-card[data-variant-index="${variantIndex}"] .default-selling-toggle:checked`);
         const errors = [];
         
         if (checkedToggles.length === 0) {
-            const baseUnitSelected = $('#baseUnitSelect').val();
+            const baseUnitSelected = $(`#baseUnitSelect_${variantIndex}`).val();
             if (baseUnitSelected) {
-                $('#baseUnitDefault').prop('checked', true);
-                updateDefaultSellingIndicators();
+                $(`#baseUnitDefault_${variantIndex}`).prop('checked', true);
+                updateDefaultSellingIndicators(variantIndex);
             } else {
                 errors.push('No default selling unit selected and no base unit configured');
             }
         } else if (checkedToggles.length === 1) {
             const checkedToggle = checkedToggles.first();
             
-            if (checkedToggle.attr('id') === 'baseUnitDefault') {
-                if (!$('#baseUnitSelect').val()) {
+            if (checkedToggle.attr('id') === `baseUnitDefault_${variantIndex}`) {
+                if (!$(`#baseUnitSelect_${variantIndex}`).val()) {
                     errors.push('Base unit must be selected to set as default selling unit');
                 }
             } else {
@@ -1677,7 +1424,7 @@
             errors.push('Multiple default selling units detected. Only one unit can be the default.');
             
             checkedToggles.slice(1).prop('checked', false);
-            updateDefaultSellingIndicators();
+            updateDefaultSellingIndicators(variantIndex);
         }
         
         return {
@@ -1686,4 +1433,4 @@
         };
     }
 </script>
-@endpush
+@endpush('product-js')

@@ -27,7 +27,7 @@
 
     @yield('product-content')
 
-    <div class="mt-4 d-flex justify-content-between">
+    <div class="mt-4 d-flex @if($step - 1 > 0) justify-content-between @else justify-content-end @endif">
             @if($step - 1 > 0)
                 <a class="btn btn-secondary" href="{{ route('product-management', ['type' => encrypt($type), 'step' => encrypt($step - 1), 'id' => encrypt($product->id)]) }}"> Back </a>
             @endif
