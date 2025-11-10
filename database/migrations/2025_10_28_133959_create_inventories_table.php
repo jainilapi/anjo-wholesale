@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('inventories', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('product_id');
-            $table->unsignedBigInteger('product_varient_id');
+            $table->unsignedBigInteger('product_variant_id');
             $table->unsignedBigInteger('warehouse_id');
             $table->double('quantity')->default(0)->comment('Current quantity available in x warehouse');
             $table->double('max_stock_level')->default(0)->comment('Warehouse can have only specified quantity');

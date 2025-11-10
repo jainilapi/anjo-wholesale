@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('product_varient_images', function (Blueprint $table) {
+        Schema::create('product_variant_images', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('product_id');
-            $table->unsignedBigInteger('varient_id');
+            $table->unsignedBigInteger('variant_id');
             $table->boolean('is_primary')->default(0)->comment('1 = Primary Image');
             $table->string('file');
             $table->softDeletes();
@@ -27,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('product_varient_images');
+        Schema::dropIfExists('product_variant_images');
     }
 };

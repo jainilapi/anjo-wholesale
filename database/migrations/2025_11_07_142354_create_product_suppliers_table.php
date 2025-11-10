@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('product_suppliers', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('product_id');
-            $table->unsignedBigInteger('product_varient_id')->nullable();
+            $table->unsignedBigInteger('product_variant_id')->nullable();
             $table->unsignedBigInteger('supplier_id')->nullable();
             $table->softDeletes();
             $table->timestamps();

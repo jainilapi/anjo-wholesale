@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 
-class ProductAttributeVarient extends Model
+class ProductAttributeVariant extends Model
 {
     use SoftDeletes;
 

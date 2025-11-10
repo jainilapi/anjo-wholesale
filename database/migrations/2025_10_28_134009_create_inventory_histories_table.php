@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('inventory_histories', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('product_id');
-            $table->unsignedBigInteger('product_varient_id');
+            $table->unsignedBigInteger('product_variant_id');
             $table->unsignedBigInteger('warehouse_id');
             $table->double('quantity')->default(0);
             $table->tinyInteger('type')->default(0)->comment('0 = Out | 1 = In');

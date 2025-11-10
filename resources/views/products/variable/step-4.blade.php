@@ -77,7 +77,7 @@ foreach ($product->variants as $variant) {
                         @if(isset($variant[0]['id']))
                             @foreach ($variant as $row)
                                 @php
-                                $tabId = md5($row['id'] . '-' . $row['varient_id']);
+                                $tabId = md5($row['id'] . '-' . $row['variant_id']);
                                 @endphp
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link @if($loop->first) active @endif" id="{{ $tabId }}-tab" data-current-unit="{{ $row['unit']['title'] ?? 'N/A' }}" data-bs-toggle="tab" href="#{{ $tabId }}" role="tab" aria-controls="{{ $tabId }}" aria-selected="true">{{ $row['unit']['title'] ?? 'N/A' }} @if($loop->first) (Base Unit) @endif </a>
@@ -90,10 +90,10 @@ foreach ($product->variants as $variant) {
                         @if(isset($variant[0]['id']))
                             @foreach ($variant as $row)
                                 @php
-                                $tabId = md5($row['id'] . '-' . $row['varient_id']);
+                                $tabId = md5($row['id'] . '-' . $row['variant_id']);
                                 @endphp
                             <div class="tab-pane fade @if($loop->first) show active @endif" id="{{ $tabId }}" role="tabpanel" aria-labelledby="{{ $tabId }}-tab">
-                                <table class="table table-bordered pricing-table-instance" data-variant-id="{{ $row['varient_id'] }}" data-unit-row-id="{{ $row['id'] }}">
+                                <table class="table table-bordered pricing-table-instance" data-variant-id="{{ $row['variant_id'] }}" data-unit-row-id="{{ $row['id'] }}">
                                     <thead>
                                         <tr>
                                             <th>Min Quantity</th>
@@ -104,7 +104,7 @@ foreach ($product->variants as $variant) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @forelse(\App\Models\ProductTierPricing::where('product_varient_id', $row['varient_id'])->where('product_additional_unit_id', $row['id'])->get() as $tier)
+                                        @forelse(\App\Models\ProductTierPricing::where('product_variant_id', $row['variant_id'])->where('product_additional_unit_id', $row['id'])->get() as $tier)
                                         <tr>
                                             <td><input type="number" class="form-control" name="min_quantity[]" value="{{ $tier->min_qty }}" min="1" step="1"></td>
                                             <td><input type="number" class="form-control" name="max_quantity[]" value="{{ $tier->max_qty }}"></td>
@@ -209,7 +209,7 @@ foreach ($product->variants as $variant) {
                 const discount = parseFloat($(this).find('input[name="discount[]"]').val());
                 if (!isNaN(minQty) || !isNaN(maxQty) || !isNaN(price) || !isNaN(discount)) {
                     items.push({
-                        product_varient_id: variantId,
+                        product_variant_id: variantId,
                         product_additional_unit_id: unitRowId,
                         min_qty: isNaN(minQty) ? null : minQty,
                         max_qty: isNaN(maxQty) ? null : maxQty,

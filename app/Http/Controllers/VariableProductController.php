@@ -13,7 +13,7 @@ use App\Models\Warehouse;
 use App\Models\ProductBaseUnit;
 use App\Models\ProductAdditionalUnit;
 use App\Models\ProductTierPricing;
-use App\Models\ProductVarient;
+use App\Models\ProductVariant;
 use App\Rules\UnitHierarchyRule;
 use App\Rules\DefaultSellingUnitRule;
 use App\Models\Inventory;
@@ -42,12 +42,12 @@ class VariableProductController extends Controller
         foreach ($product->variants as $thisVariant) {
 
             $baseUnitForV = ProductBaseUnit::where('product_id', $product->id)
-                ->where('varient_id', $thisVariant->id)
+                ->where('variant_id', $thisVariant->id)
                 ->with('unit')
                 ->first();
 
             $additionalUnitsForV = ProductAdditionalUnit::where('product_id', $product->id)
-                ->where('varient_id', $thisVariant->id)
+                ->where('variant_id', $thisVariant->id)
                 ->with(['unit', 'parent'])
                 ->orderBy('parent_id')
                 ->get();
@@ -61,14 +61,14 @@ class VariableProductController extends Controller
 
         $warehouses = Warehouse::select('id', 'code', 'name')->toBase()->get();
 
-        $variants = ProductVarient::where('product_id', $product->id)->get()->map(function ($varient) {
+        $variants = ProductVariant::where('product_id', $product->id)->get()->map(function ($variant) {
             return [
-                'id' => $varient->id,
-                'name' => $varient->name,
-                'sku' => $varient->sku,
-                'barcode' => $varient->barcode,
+                'id' => $variant->id,
+                'name' => $variant->name,
+                'sku' => $variant->sku,
+                'barcode' => $variant->barcode,
                 'status' => 'No Data',
-                'warehouses' => $varient->inventories()->with('warehouse')->get()->map(function ($location) {
+                'warehouses' => $variant->inventories()->with('warehouse')->get()->map(function ($location) {
                     return [
                         'id' => $location->warehouse_id,
                         'code' => $location->warehouse->code ?? 'N/A',
@@ -84,14 +84,14 @@ class VariableProductController extends Controller
             ];
         })->values();
 
-        $variantsForSupplier = ProductVarient::where('product_id', $product->id)->get()->map(function ($varient) {
+        $variantsForSupplier = ProductVariant::where('product_id', $product->id)->get()->map(function ($variant) {
             return [
-                'id' => $varient->id,
-                'name' => $varient->name,
-                'sku' => $varient->sku,
-                'barcode' => $varient->barcode,
+                'id' => $variant->id,
+                'name' => $variant->name,
+                'sku' => $variant->sku,
+                'barcode' => $variant->barcode,
                 'status' => 'No Data',
-                'suppliers' => $varient->suppliers()->with(['supplier.country', 'variant'])->get()->map(function ($sup) {
+                'suppliers' => $variant->suppliers()->with(['supplier.country', 'variant'])->get()->map(function ($sup) {
                     return [
                         'id' => $sup->supplier_id ?? null,
                         'name' => $sup->supplier->name ?? 'N/A',
@@ -215,10 +215,10 @@ class VariableProductController extends Controller
 
                         DB::beginTransaction();
                         try {
-                            \App\Models\ProductAttribute::where('product_id', $product->id)->delete();
-                            \App\Models\ProductAttributeVarient::where('product_id', $product->id)->delete();
-                            \App\Models\ProductVarientImage::where('product_id', $product->id)->delete();
-                            ProductVarient::where('product_id', $product->id)->delete();
+                            ProductAttribute::where('product_id', $product->id)->delete();
+                            ProductAttributeVariant::where('product_id', $product->id)->delete();
+                            ProductVariantImage::where('product_id', $product->id)->delete();
+                            ProductVariant::where('product_id', $product->id)->delete();
 
                             $grouped = [];
 
@@ -228,7 +228,7 @@ class VariableProductController extends Controller
                                 if (empty($vals)) continue;
                                 $ids = [];
                                 foreach ($vals as $val) {
-                                    $a = \App\Models\ProductAttribute::create([
+                                    $a = ProductAttribute::create([
                                         'product_id' => $product->id,
                                         'title' => $title,
                                         'value' => $val,
@@ -270,7 +270,7 @@ class VariableProductController extends Controller
                                     return substr(preg_replace('/[^A-Za-z0-9]/', '', $p), 0, 2);
                                 }, $parts)));
                                 $sku = sprintf('PRD-%s-%03d', $skuSuffix ?: 'VAR', $counter);
-                                $variant = ProductVarient::create([
+                                $variant = ProductVariant::create([
                                     'product_id' => $product->id,
                                     'name' => $name,
                                     'sku' => $sku,
@@ -278,10 +278,10 @@ class VariableProductController extends Controller
                                     'status' => 1,
                                 ]);
                                 foreach ($set as $aid) {
-                                    \App\Models\ProductAttributeVarient::create([
+                                    \App\Models\ProductAttributeVariant::create([
                                         'product_id' => $product->id,
                                         'attribute_id' => $aid,
-                                        'varient_id' => $variant->id,
+                                        'variant_id' => $variant->id,
                                     ]);
                                 }
                                 $items[] = [
@@ -306,11 +306,11 @@ class VariableProductController extends Controller
 
                     if ($request->op === 'inline') {
                         $request->validate([
-                            'id' => 'required|integer|exists:product_varients,id',
+                            'id' => 'required|integer|exists:product_variants,id',
                             'field' => 'required|string|in:name,sku,barcode,status',
                             'value' => 'nullable',
                         ]);
-                        $variant = ProductVarient::where('product_id', $product->id)->findOrFail($request->id);
+                        $variant = ProductVariant::where('product_id', $product->id)->findOrFail($request->id);
                         if ($request->field === 'status') {
                             $variant->status = (int) !!$request->value;
                         } else {
@@ -322,13 +322,13 @@ class VariableProductController extends Controller
 
                     if ($request->op === 'delete') {
                         $request->validate([
-                            'id' => 'required|integer|exists:product_varients,id',
+                            'id' => 'required|integer|exists:product_variants,id',
                         ]);
                         DB::beginTransaction();
                         try {
-                            $variant = ProductVarient::where('product_id', $product->id)->findOrFail($request->id);
-                            \App\Models\ProductAttributeVarient::where('product_id', $product->id)->where('varient_id', $variant->id)->delete();
-                            \App\Models\ProductVarientImage::where('product_id', $product->id)->where('varient_id', $variant->id)->delete();
+                            $variant = ProductVariant::where('product_id', $product->id)->findOrFail($request->id);
+                            ProductAttributeVariant::where('product_id', $product->id)->where('variant_id', $variant->id)->delete();
+                            ProductVariantImage::where('product_id', $product->id)->where('variant_id', $variant->id)->delete();
                             $variant->delete();
                             DB::commit();
                             return response()->json(['success' => true]);
@@ -340,15 +340,15 @@ class VariableProductController extends Controller
 
                     if ($request->op === 'upload-image') {
                         $request->validate([
-                            'id' => 'required|integer|exists:product_varients,id',
+                            'id' => 'required|integer|exists:product_variants,id',
                             'file' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
                         ]);
-                        $variant = ProductVarient::where('product_id', $product->id)->findOrFail($request->id);
+                        $variant = ProductVariant::where('product_id', $product->id)->findOrFail($request->id);
                         $path = $request->file('file')->store('products/variants', 'public');
-                        \App\Models\ProductVarientImage::where('product_id', $product->id)->where('varient_id', $variant->id)->where('is_primary', 1)->delete();
-                        $img = \App\Models\ProductVarientImage::create([
+                        ProductVariantImage::where('product_id', $product->id)->where('variant_id', $variant->id)->where('is_primary', 1)->delete();
+                        $img = ProductVariantImage::create([
                             'product_id' => $product->id,
-                            'varient_id' => $variant->id,
+                            'variant_id' => $variant->id,
                             'is_primary' => 1,
                             'file' => $path,
                         ]);
@@ -356,7 +356,7 @@ class VariableProductController extends Controller
                     }
 
                     if ($request->op === 'generate-barcodes') {
-                        $variants = ProductVarient::where('product_id', $product->id)->get();
+                        $variants = ProductVariant::where('product_id', $product->id)->get();
                         $i = 1;
                         foreach ($variants as $v) {
                             $v->barcode = sprintf('BC%06d', $product->id * 1000 + $i);
@@ -367,20 +367,20 @@ class VariableProductController extends Controller
                     }
 
                     if ($request->op === 'enable-all') {
-                        ProductVarient::where('product_id', $product->id)->update(['status' => 1]);
+                        ProductVariant::where('product_id', $product->id)->update(['status' => 1]);
                         return response()->json(['success' => true]);
                     }
 
                     if ($request->op === 'list') {
-                        $variants = ProductVarient::where('product_id', $product->id)->get();
+                        $variants = ProductVariant::where('product_id', $product->id)->get();
                         $items = [];
                         foreach ($variants as $v) {
-                            $attrIds = \App\Models\ProductAttributeVarient::where('product_id', $product->id)->where('varient_id', $v->id)->pluck('attribute_id')->toArray();
+                            $attrIds = \App\Models\ProductAttributeVariant::where('product_id', $product->id)->where('variant_id', $v->id)->pluck('attribute_id')->toArray();
                             $parts = [];
                             if (!empty($attrIds)) {
                                 $parts = \App\Models\ProductAttribute::whereIn('id', $attrIds)->pluck('value')->toArray();
                             }
-                            $img = \App\Models\ProductVarientImage::where('product_id', $product->id)->where('varient_id', $v->id)->where('is_primary', 1)->first();
+                            $img = \App\Models\ProductVariantImage::where('product_id', $product->id)->where('variant_id', $v->id)->where('is_primary', 1)->first();
                             $items[] = [
                                 'id' => $v->id,
                                 'name' => $v->name,
@@ -428,7 +428,7 @@ class VariableProductController extends Controller
 
                 $request->validate([
                     '_tier_items' => 'nullable|array',
-                    '_tier_items.*.product_varient_id' => 'required|integer|exists:product_varients,id',
+                    '_tier_items.*.product_variant_id' => 'required|integer|exists:product_variants,id',
                     '_tier_items.*.product_additional_unit_id' => 'required|integer',
                     '_tier_items.*.min_qty' => 'required|numeric|min:1',
                     '_tier_items.*.max_qty' => 'nullable|numeric',
@@ -443,9 +443,9 @@ class VariableProductController extends Controller
                 }
 
                 foreach ($items as $index => $row) {
-                    $variant = ProductVarient::where('product_id', $product->id)->where('id', $row['product_varient_id'] ?? 0)->first();
+                    $variant = ProductVariant::where('product_id', $product->id)->where('id', $row['product_variant_id'] ?? 0)->first();
                     if (!$variant) {
-                        return back()->withInput()->withErrors(["_tier_items.$index.product_varient_id" => 'Invalid variant for this product']);
+                        return back()->withInput()->withErrors(["_tier_items.$index.product_variant_id" => 'Invalid variant for this product']);
                     }
 
                     $unitRowId = $row['product_additional_unit_id'] ?? 0;
@@ -465,7 +465,7 @@ class VariableProductController extends Controller
 
                 $grouped = [];
                 foreach ($items as $row) {
-                    $key = ($row['product_varient_id'] ?? '0') . '-' . ($row['product_additional_unit_id'] ?? '0');
+                    $key = ($row['product_variant_id'] ?? '0') . '-' . ($row['product_additional_unit_id'] ?? '0');
                     $grouped[$key][] = $row;
                 }
 
@@ -493,7 +493,7 @@ class VariableProductController extends Controller
                     foreach ($items as $r) {
                         ProductTierPricing::create([
                             'product_id' => $product->id,
-                            'product_varient_id' => (int)$r['product_varient_id'],
+                            'product_variant_id' => (int)$r['product_variant_id'],
                             'product_additional_unit_id' => (int)$r['product_additional_unit_id'],
                             'min_qty' => (float)$r['min_qty'],
                             'max_qty' => $r['max_qty'] === null || $r['max_qty'] === '' ? 0 : (float)$r['max_qty'],
@@ -516,7 +516,7 @@ class VariableProductController extends Controller
                 $validated = $request->validate([
                     'data' => 'nullable|array',
                     'data.product_variant_id' => 'nullable|array',
-                    'data.product_variant_id.*' => 'exists:product_varients,id',
+                    'data.product_variant_id.*' => 'exists:product_variants,id',
                     'data.warehouse_id' => 'nullable|array',
                     'data.warehouse_id.*' => 'exists:warehouses,id',
                     'data.item_quantity' => 'nullable|array',
@@ -542,7 +542,7 @@ class VariableProductController extends Controller
                         $item_max = $validated['data']['item_max'][$index];
                         $item_notes = $validated['data']['item_notes'][$index];
 
-                        $inventory = Inventory::where('product_varient_id', $product_variant_id)
+                        $inventory = Inventory::where('product_variant_id', $product_variant_id)
                             ->where('warehouse_id', $warehouse_id)
                             ->first();
 
@@ -556,7 +556,7 @@ class VariableProductController extends Controller
                         } else {
                             Inventory::create([
                                 'product_id' => $product_variant_id,
-                                'product_varient_id' => $product_variant_id,
+                                'product_variant_id' => $product_variant_id,
                                 'warehouse_id' => $warehouse_id,
                                 'quantity' => $item_quantity,
                                 'reorder_level' => $item_reordering,
@@ -578,7 +578,7 @@ class VariableProductController extends Controller
                 $validated = $request->validate([
                     'data' => 'nullable|array',
                     'data.product_variant_id' => 'nullable|array',
-                    'data.product_variant_id.*' => 'exists:product_varients,id',
+                    'data.product_variant_id.*' => 'exists:product_variants,id',
                     'data.supplier_id' => 'nullable|array',
                     'data.supplier_id.*' => 'exists:users,id'
                 ]);
@@ -589,14 +589,14 @@ class VariableProductController extends Controller
                     foreach ($validated['data']['product_variant_id'] as $index => $product_variant_id) {
                         $supplier_id = $validated['data']['supplier_id'][$index];
 
-                        $inventory = ProductSupplier::where('product_varient_id', $product_variant_id)
+                        $inventory = ProductSupplier::where('product_variant_id', $product_variant_id)
                             ->where('supplier_id', $supplier_id)
                             ->first();
 
                         if (!$inventory) {
                             $inventory = ProductSupplier::create([
                                 'product_id' => $product->id,
-                                'product_varient_id' => $product_variant_id,
+                                'product_variant_id' => $product_variant_id,
                                 'supplier_id' => $supplier_id
                             ]);
                         }
@@ -980,14 +980,14 @@ class VariableProductController extends Controller
             [
                 'product_id' => $productId,
                 'unit_id' => $request->input('base_unit_id'),
-                'varient_id' => $request->input('id')
+                'variant_id' => $request->input('id')
             ]
         );
     }
 
     private static function saveAdditionalUnits($productId, array $additionalUnits, $variantId)
     {
-        ProductAdditionalUnit::where('product_id', $productId)->where('varient_id', $variantId)->delete();
+        ProductAdditionalUnit::where('product_id', $productId)->where('variant_id', $variantId)->delete();
 
         $savedUnits = [];
 
@@ -999,7 +999,7 @@ class VariableProductController extends Controller
 
             $unit = ProductAdditionalUnit::create([
                 'product_id' => $productId,
-                'varient_id' => $variantId,
+                'variant_id' => $variantId,
                 'unit_id' => $unitData['unit_id'],
                 'quantity' => $unitData['quantity'],
                 'parent_id' => $parentId,

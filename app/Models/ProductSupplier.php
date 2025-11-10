@@ -13,7 +13,7 @@ class ProductSupplier extends Model
 
     public function variant()
     {
-        return $this->belongsTo(ProductVarient::class, 'product_varient_id');
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 
     public function supplier()

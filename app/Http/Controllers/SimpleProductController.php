@@ -420,7 +420,7 @@ class SimpleProductController extends Controller
             ['product_id' => $productId],
             [
                 'unit_id' => $request->input('base_unit_id'),
-                'varient_id' => null
+                'variant_id' => null
             ]
         );
     }
@@ -439,7 +439,7 @@ class SimpleProductController extends Controller
             
             $unit = ProductAdditionalUnit::create([
                 'product_id' => $productId,
-                'varient_id' => null,
+                'variant_id' => null,
                 'unit_id' => $unitData['unit_id'],
                 'quantity' => $unitData['quantity'],
                 'parent_id' => $parentId,
