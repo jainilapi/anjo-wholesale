@@ -51,7 +51,7 @@
                     $variantIndex = $loop->index;
                     $variantBaseUnit = $baseUnitsForAllV[$variant->id] ?? null;
                     $variantAdditionalUnits = $additionalUnitsForAllV[$variant->id] ?? collect();
-                    $variantUnitHierarchy = $unitHierarchies[$variant->id] ?? [];
+                    $variantUnitHierarchy = $unitHierarchy[$variant->id] ?? [];
                 @endphp
 
                 <input type="hidden" name="variants[{{ $variantIndex }}][id]" value="{{ $variant->id }}">
