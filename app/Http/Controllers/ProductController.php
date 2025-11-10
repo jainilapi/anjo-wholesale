@@ -104,7 +104,7 @@ class ProductController extends Controller
             abort(404, $notFoundMessage);
         }
 
-        if ($type == 'variable' && !($step >= 1 && $step <= 8)) {
+        if ($type == 'variable' && !($step >= 1 && $step <= 9)) {
             abort(404, $notFoundMessage);
         }
 

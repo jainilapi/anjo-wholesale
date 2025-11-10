@@ -657,8 +657,7 @@ class VariableProductController extends Controller
 
                     DB::commit();
 
-                    return redirect()
-                        ->route('products.index')
+                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(8), 'id' => encrypt($product->id)])
                         ->with('success', 'Data saved successfully');
                 } catch (\Exception $e) {
                     DB::rollBack();
@@ -670,6 +669,10 @@ class VariableProductController extends Controller
                 }
 
             case 8:
+
+                
+
+            case 9:
 
                 break;
             default:

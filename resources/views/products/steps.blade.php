@@ -6,6 +6,10 @@
         array_splice($steps, 1, 0, 'Variants');
     }
 
+    if ($type == 'variable') {
+        array_splice($steps, 7, 0, 'Substitutes');
+    }
+
 @endphp
 
 <div class="progress-container">
