@@ -20,6 +20,7 @@ use App\Models\Inventory;
 use App\Models\Warehouse;
 use App\Models\ProductSupplier;
 use App\Models\User;
+use App\Models\ProductSubtitue;
 
 class SimpleProductController extends Controller
 {
@@ -55,6 +56,22 @@ class SimpleProductController extends Controller
             $unitHierarchy[$thisVariant->id] = self::buildUnitHierarchy($additionalUnitsForV, $baseUnitForV);
             $baseUnitsForAllV[$thisVariant->id] = $baseUnitForV;
             $additionalUnitsForAllV[$thisVariant->id] = $additionalUnitsForV;
+        }
+
+        if ($step == 7) {
+            $simpleSubstitutes = ProductSubtitue::where('product_id', $product->id)
+                ->whereNull('variant_id')
+                ->with(['substituteProduct:id,name', 'substituteVariant:id,name,sku'])
+                ->get()
+                ->map(function ($sub) {
+                    $productName = $sub->substituteProduct->name ?? 'N/A';
+                    $variantName = $sub->substituteVariant->name ?? 'N/A';
+                    $variantSku = $sub->substituteVariant->sku ?? 'N/A';
+                    return [
+                        'substitute_variant_id' => $sub->source_variant_id,
+                        'text_representation' => "{$productName} - {$variantName} (SKU: {$variantSku})"
+                    ];
+                });
         }
 
         $units = Unit::get();
@@ -118,6 +135,7 @@ class SimpleProductController extends Controller
         })->values()->toArray();
 
         $variantsForSubstitutes = collect();
+        $simpleSubstitutes = collect();
 
         if ($step == 8) {
 
@@ -224,7 +242,7 @@ class SimpleProductController extends Controller
             'baseUnitsForAllV',
             'additionalUnitsForAllV',
             'variantsForSubstitutes',
-            'reviewData'
+            'reviewData', 'simpleSubstitutes'
         ));
     }
 
@@ -547,9 +565,99 @@ class SimpleProductController extends Controller
 
             case 7:
 
-                
+                $product = Product::findOrFail($id);
 
-                break;
+                if ($request->ajax()) {
+                    $request->validate([
+                        'op' => 'required|string',
+                        'term' => 'nullable|string',
+                    ]);
+
+                    if ($request->op === 'search-variants') {
+                        $term = $request->input('term', '');
+                        $variants = ProductVariant::query()
+                            ->where('product_id', '!=', $product->id)
+                            ->where(function ($query) use ($term) {
+                                $query->where('name', 'LIKE', "%{$term}%")
+                                      ->orWhere('sku', 'LIKE', "%{$term}%");
+                            })
+                            ->with('product:id,name')
+                            ->paginate(20);
+
+                        $grouped = $variants->getCollection()->groupBy('product.name');
+                        $results = [];
+
+                        foreach ($grouped as $productName => $variantGroup) {
+                            $children = $variantGroup->map(function($variant) {
+                                return [
+                                    'id' => $variant->id,
+                                    'text' => "{$variant->name} (SKU: {$variant->sku})"
+                                ];
+                            });
+
+                            if ($productName) {
+                                $results[] = [
+                                    'text' => $productName,
+                                    'children' => $children
+                                ];
+                            }
+                        }
+
+                        return response()->json([
+                            'results' => $results,
+                            'pagination' => ['more' => $variants->hasMorePages()]
+                        ]);
+                    }
+
+                    return response()->json(['message' => 'Unknown AJAX operation'], 422);
+                }
+
+                $validated = $request->validate([
+                    'substitutes' => 'nullable|array',
+                    'substitutes.*' => 'required|integer|exists:product_variants,id',
+                ], [
+                    'substitutes.*.exists' => 'The selected substitute variant is invalid.'
+                ]);
+
+                try {
+                    DB::beginTransaction();
+
+                    ProductSubtitue::where('product_id', $product->id)
+                        ->whereNull('variant_id')
+                        ->delete();
+
+                    $sourceVariantIds = $validated['substitutes'] ?? [];
+                    $dataToInsert = [];
+
+                    if (!empty($sourceVariantIds)) {
+                        $validSourceVariants = ProductVariant::whereIn('id', $sourceVariantIds)
+                            ->where('product_id', '!=', $product->id)
+                            ->get(['id', 'product_id']);
+
+                        foreach ($validSourceVariants as $sourceVariant) {
+                            $dataToInsert[] = [
+                                'product_id' => $product->id,
+                                'variant_id' => null,
+                                'source_product_id' => $sourceVariant->product_id,
+                                'source_variant_id' => $sourceVariant->id,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }
+                    }
+
+                    if (!empty($dataToInsert)) {
+                        ProductSubtitue::insert($dataToInsert);
+                    }
+
+                    DB::commit();
+
+                    return redirect()->route('product-management', ['type' => encrypt('simple'), 'step' => encrypt(8), 'id' => encrypt($product->id)])
+                        ->with('success', 'Data saved successfully');
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    return back()->withInput()->with('error', 'Failed to save substitutes');
+                }
 
             case 8:
 
