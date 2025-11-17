@@ -79,7 +79,7 @@
 @push('product-js')
 <script>
 const allWarehouses = @json($warehouses);
-let locations = @json($locations);
+let locations = @json([]);
 
 $(document).ready(function () {
   renderLocations();

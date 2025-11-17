@@ -1,13 +1,9 @@
 @php
 
-    $steps = ['Basics', 'Pack Sizes', 'Pricing', 'Inventory', 'Suppliers', 'Category', 'Review'];
+    $steps = ['Basics', 'Pack Sizes', 'Pricing', 'Inventory', 'Suppliers', 'Category', 'Substitutes', 'Review'];
 
     if ($type != 'simple') {
         array_splice($steps, 1, 0, 'Variants');
-    }
-
-    if ($type == 'variable') {
-        array_splice($steps, 7, 0, 'Substitutes');
     }
 
 @endphp
@@ -15,7 +11,7 @@
 <div class="progress-container">
     <div class="step-progress" style="margin-top: 110px;margin-bottom: 20px;">
         <div class="step-line"></div>
-
+        
         @foreach ($steps as $step)
             <div class="step-item @if($currentStep == $loop->iteration) active @elseif($loop->iteration >=1 && $currentStep > ($loop->iteration - 1)) completed @else pending @endif">
                 <div class="step-circle"> {{ $loop->iteration }} </div>

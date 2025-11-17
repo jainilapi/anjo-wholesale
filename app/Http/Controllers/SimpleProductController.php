@@ -547,6 +547,8 @@ class SimpleProductController extends Controller
 
             case 7:
 
+                
+
                 break;
 
             case 8:

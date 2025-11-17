@@ -51,7 +51,7 @@
 @push('product-js')
 <script>
 const allSuppliers = @json($suppliers);
-let simpleSuppliers = @json($simpleSuppliers);
+let simpleSuppliers = @json([]);
 
 $(document).ready(function () {
   renderSuppliers();
