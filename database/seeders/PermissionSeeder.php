@@ -132,32 +132,32 @@ class PermissionSeeder extends Seeder
             ],
 
             [
-                'name' => 'Locations Listing',
-                'slug' => 'locations.index'
+                'name' => 'Customer Locations Listing',
+                'slug' => 'customer-locations.index'
             ],
             [
-                'name' => 'Locations Add',
-                'slug' => 'locations.create'
+                'name' => 'Customer Locations Add',
+                'slug' => 'customer-locations.create'
             ],
             [
-                'name' => 'Locations Save',
-                'slug' => 'locations.store'
+                'name' => 'Customer Locations Save',
+                'slug' => 'customer-locations.store'
             ],
             [
-                'name' => 'Locations Edit',
-                'slug' => 'locations.edit'
+                'name' => 'Customer Locations Edit',
+                'slug' => 'customer-locations.edit'
             ],
             [
-                'name' => 'Locations Update',
-                'slug' => 'locations.update'
+                'name' => 'Customer Locations Update',
+                'slug' => 'customer-locations.update'
             ],
             [
-                'name' => 'Locations View',
-                'slug' => 'locations.show'
+                'name' => 'Customer Locations View',
+                'slug' => 'customer-locations.show'
             ],
             [
-                'name' => 'Locations Delete',
-                'slug' => 'locations.destroy'
+                'name' => 'Customer Locations Delete',
+                'slug' => 'customer-locations.destroy'
             ],
 
             [
@@ -188,6 +188,37 @@ class PermissionSeeder extends Seeder
                 'name' => 'Warehouses Delete',
                 'slug' => 'warehouses.destroy'
             ],
+
+
+            [
+                'name' => 'Location Listing',
+                'slug' => 'locations.index'
+            ],
+            [
+                'name' => 'Location Add',
+                'slug' => 'locations.create'
+            ],
+            [
+                'name' => 'Location Save',
+                'slug' => 'locations.store'
+            ],
+            [
+                'name' => 'Location Edit',
+                'slug' => 'locations.edit'
+            ],
+            [
+                'name' => 'Location Update',
+                'slug' => 'locations.update'
+            ],
+            [
+                'name' => 'Location View',
+                'slug' => 'locations.show'
+            ],
+            [
+                'name' => 'Location Delete',
+                'slug' => 'locations.destroy'
+            ],
+
 
             [
                 'name' => 'Categories Listing',

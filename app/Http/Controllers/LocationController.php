@@ -12,17 +12,17 @@ use Spatie\Permission\Models\Role;
 class LocationController extends Controller
 {
     protected $title = 'Locations';
-    protected $view = 'locations.';
+    protected $view = 'customer-locations.';
 
     public function __construct()
     {
-        $this->middleware('permission:locations.index')->only(['index']);
-        $this->middleware('permission:locations.create')->only(['create']);
-        $this->middleware('permission:locations.store')->only(['store']);
-        $this->middleware('permission:locations.edit')->only(['edit']);
-        $this->middleware('permission:locations.update')->only(['update']);
-        $this->middleware('permission:locations.show')->only(['show']);
-        $this->middleware('permission:locations.destroy')->only(['destroy']);
+        $this->middleware('permission:customer-locations.index')->only(['index']);
+        $this->middleware('permission:customer-locations.create')->only(['create']);
+        $this->middleware('permission:customer-locations.store')->only(['store']);
+        $this->middleware('permission:customer-locations.edit')->only(['edit']);
+        $this->middleware('permission:customer-locations.update')->only(['update']);
+        $this->middleware('permission:customer-locations.show')->only(['show']);
+        $this->middleware('permission:customer-locations.destroy')->only(['destroy']);
     }
 
     public function index()
@@ -71,16 +71,16 @@ class LocationController extends Controller
         ->addColumn('action', function ($row) {
             $html = '';
 
-            if (auth()?->user()?->isAdmin() || auth()->user()->can('locations.edit')) {
-                $html .= '<a href="' . route('locations.edit', encrypt($row->id)) . '" class="btn btn-sm btn-primary"> <i class="fa fa-edit"> </i> </a>&nbsp;';
+            if (auth()?->user()?->isAdmin() || auth()->user()->can('customer-locations.edit')) {
+                $html .= '<a href="' . route('customer-locations.edit', encrypt($row->id)) . '" class="btn btn-sm btn-primary"> <i class="fa fa-edit"> </i> </a>&nbsp;';
             }
 
-            if (auth()?->user()?->isAdmin() || auth()->user()->can('locations.destroy')) {
-                $html .= '<button type="button" class="btn btn-sm btn-danger" id="deleteRow" data-row-route="' . route('locations.destroy', $row->id) . '"> <i class="fa fa-trash"> </i> </button>&nbsp;';
+            if (auth()?->user()?->isAdmin() || auth()->user()->can('customer-locations.destroy')) {
+                $html .= '<button type="button" class="btn btn-sm btn-danger" id="deleteRow" data-row-route="' . route('customer-customerlocations.destroy', $row->id) . '"> <i class="fa fa-trash"> </i> </button>&nbsp;';
             }
 
-            if (auth()?->user()?->isAdmin() || auth()->user()->can('locations.show')) {
-                $html .= '<a href="' . route('locations.show', encrypt($row->id)) . '" class="btn btn-sm btn-secondary"> <i class="fa fa-eye"> </i> </a>';
+            if (auth()?->user()?->isAdmin() || auth()->user()->can('customer-locations.show')) {
+                $html .= '<a href="' . route('customer-locations.show', encrypt($row->id)) . '" class="btn btn-sm btn-secondary"> <i class="fa fa-eye"> </i> </a>';
             }
 
             return $html;
@@ -132,10 +132,10 @@ class LocationController extends Controller
             Location::create($data);
 
             DB::commit();
-            return redirect()->route('locations.index')->with('success', 'Location created successfully.');
+            return redirect()->route('customer-locations.index')->with('success', 'Location created successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->route('locations.index')->with('error', 'Something Went Wrong.');
+            return redirect()->route('customer-locations.index')->with('error', 'Something Went Wrong.');
         }
     }
 
@@ -191,10 +191,10 @@ class LocationController extends Controller
             $location->update($data);
 
             DB::commit();
-            return redirect()->route('locations.index')->with('success', 'Location updated successfully.');
+            return redirect()->route('customer-locations.index')->with('success', 'Location updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->route('locations.index')->with('error', 'Something Went Wrong.');
+            return redirect()->route('customer-locations.index')->with('error', 'Something Went Wrong.');
         }
     }
 

@@ -29,7 +29,7 @@
         <div class="card">
             <div class="card-header">Edit Location</div>
             <div class="card-body">
-                <form id="locationForm" method="POST" action="{{ route('locations.update', encrypt($location->id)) }}">
+                <form id="locationForm" method="POST" action="{{ route('customer-locations.update', encrypt($location->id)) }}">
                     @csrf
                     @method('PUT')
                     <div class="row">
@@ -151,7 +151,7 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary">Update Location</button>
-                    <a href="{{ route('locations.index') }}" class="btn btn-secondary">Cancel</a>
+                    <a href="{{ route('customer-locations.index') }}" class="btn btn-secondary">Cancel</a>
                 </form>
             </div>
         </div>

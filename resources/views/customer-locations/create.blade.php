@@ -29,7 +29,7 @@
         <div class="card">
             <div class="card-header">Add New Location</div>
             <div class="card-body">
-                <form id="locationForm" method="POST" action="{{ route('locations.store') }}">
+                <form id="locationForm" method="POST" action="{{ route('customer-locations.store') }}">
                     @csrf
                     <div class="row">
                         <div class="col-md-3">
@@ -150,7 +150,7 @@
                     </div>
 
                     <button type="submit" class="btn btn-primary">Create Location</button>
-                    <a href="{{ route('locations.index') }}" class="btn btn-secondary">Cancel</a>
+                    <a href="{{ route('customer-locations.index') }}" class="btn btn-secondary">Cancel</a>
                 </form>
             </div>
         </div>

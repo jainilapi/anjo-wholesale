@@ -98,9 +98,9 @@
                     </div>
                 </div>
                 <div class="mt-3">
-                    <a href="{{ route('locations.index') }}" class="btn btn-secondary">Back to List</a>
-                    @if(auth()->user()->can('locations.edit'))
-                        <a href="{{ route('locations.edit', encrypt($location->id)) }}" class="btn btn-primary">Edit Location</a>
+                    <a href="{{ route('customer-locations.index') }}" class="btn btn-secondary">Back to List</a>
+                    @if(auth()->user()->can('customer-locations.edit'))
+                        <a href="{{ route('customer-locations.edit', encrypt($location->id)) }}" class="btn btn-primary">Edit Location</a>
                     @endif
                 </div>
             </div>

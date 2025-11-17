@@ -6,7 +6,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <a href="{{ route('locations.create') }}" class="btn btn-primary float-end"> 
+                <a href="{{ route('customer-locations.create') }}" class="btn btn-primary float-end"> 
                     <i class="fa fa-plus"></i> Add New Location 
                 </a>
             </div>

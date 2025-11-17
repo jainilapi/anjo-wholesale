@@ -34,14 +34,14 @@
             </li>
             @endif
 
-            @if(auth()->user()->isAdmin() || auth()->user()->can('customers.index') || auth()->user()->can('locations.index'))
-            <li class="sidebar-item @if( request()->segment(1) == 'customers' || request()->segment(1) == 'locations') active @endif">
+            @if(auth()->user()->isAdmin() || auth()->user()->can('customers.index') || auth()->user()->can('customer-locations.index'))
+            <li class="sidebar-item @if( request()->segment(1) == 'customers' || request()->segment(1) == 'customer-locations') active @endif">
                 <a data-bs-target="#customerMgmt" data-bs-toggle="collapse" class="sidebar-link">
                     <i class="align-middle me-2 fas fa-fw fa-user-tie"></i> <span class="align-middle">Customers Management</span>
                 </a>
                 <ul id="customerMgmt" class="sidebar-dropdown list-unstyled collapse" data-bs-parent="#sidebar">
                     <li class="sidebar-item @if(request()->segment(1) == 'customers') active @endif"><a class='sidebar-link' href='{{ route('customers.index') }}'>Customers</a></li>
-                    <li class="sidebar-item @if(request()->segment(1) == 'locations') active @endif"><a class='sidebar-link' href='{{ route('locations.index') }}'>Locations</a></li>
+                    <li class="sidebar-item @if(request()->segment(1) == 'customer-locations') active @endif"><a class='sidebar-link' href='{{ route('customer-locations.index') }}'>Customer Locations</a></li>
                 </ul>
             </li>
             @endif
