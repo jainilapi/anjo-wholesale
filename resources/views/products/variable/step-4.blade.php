@@ -69,7 +69,7 @@ foreach ($product->variants as $variant) {
 
         <div id="pricing-matrix" class="mt-4">
             @foreach ($finalVariants as $variant)
-                <div class="mt-4 main-visibility-container @if($loop->first) d-none @endif" data-current-unit-id="{{ $finalVariantsInfo[$loop->iteration - 1]['id'] }}">
+                <div class="mt-4 main-visibility-container @if(!$loop->first) d-none @endif" data-current-unit-id="{{ $finalVariantsInfo[$loop->iteration - 1]['id'] }}">
                     <h3 class="titleOfCurrentTabUnit">{{ $variant[0]['unit']['title'] ?? 'N/A' }} Pricing Tiers</h3>
                     <p>Set quantity-based pricing for individual <span class="titleOfCurrentTabUnit"> {{ $variant[0]['unit']['title'] ?? 'N/A' }} </span> </p>
 

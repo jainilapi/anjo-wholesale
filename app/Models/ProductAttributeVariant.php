@@ -10,4 +10,9 @@ class ProductAttributeVariant extends Model
     use SoftDeletes;
 
     protected $guarded = [];
+
+    public function attribute()
+    {
+        return $this->belongsTo(ProductAttribute::class, 'attribute_id');
+    }
 }

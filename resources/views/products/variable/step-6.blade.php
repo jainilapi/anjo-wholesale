@@ -69,14 +69,13 @@
 
 @push('product-js')
 <script>
-const allWarehouses = @json($suppliers);
-
+const allWarehouses = @json($suppliers); 
 const variants = @json($variantsForSupplier);
-
 let activeVariantId = null;
 
 $(document).ready(function () {
   renderVariants();
+
 
   $(document).on("click", ".btn-history", function () {
     const row = $(this).closest("tr");
@@ -103,21 +102,20 @@ $(document).ready(function () {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
+            let deletableVid = $(that).data('variant_id');
+            let deletableSid = $(that).data('supplier_id');
 
-        let deletableVid = $(that).data('variant_id');
-        let deletableSid = $(that).data('supplier_id');
+            let variant = variants.find(v => v.id == deletableVid);
 
-        let variant = variants.find(v => v.id == deletableVid);
+            if (variant) {
+                let supplierIndex = variant.suppliers.findIndex(s => s.id == deletableSid);
 
-        if (variant) {
-            let supplierIndex = variant.suppliers.findIndex(s => s.id == deletableSid);
-
-            if (supplierIndex !== -1) {
-                variant.suppliers.splice(supplierIndex, 1);
+                if (supplierIndex !== -1) {
+                    variant.suppliers.splice(supplierIndex, 1);
+                }
             }
-        }
-
-            $(that).parent().parent().remove();
+            
+            $(that).closest("tr").remove();
         }
     });
   });
@@ -125,13 +123,16 @@ $(document).ready(function () {
   $(document).on("click", ".btn-add-warehouse", function () {
     activeVariantId = $(this).data("variant-id");
     const variant = variants.find(v => v.id === activeVariantId);
-    const usedWarehouses = variant.suppliers.map(w => w);
     
-    const available = allWarehouses.filter(w => !usedWarehouses.map(z => z.id).includes(w.id));
+    const usedSuppliers = variant.suppliers.map(w => w.id);
+    
+    const available = allWarehouses.filter(w => !usedSuppliers.includes(w.id));
     
     const select = $("#warehouseSelect");
     select.empty();
+    
     if (available.length) {
+      select.append(`<option value="">Select Supplier</option>`);
       available.forEach(w => select.append(`<option value="${w.id}">${w.name} - ${w.email}</option>`));
     } else {
       select.append(`<option value="">No more suppliers available</option>`);
@@ -148,7 +149,8 @@ $(document).ready(function () {
     }
 
     const variant = variants.find(v => v.id === activeVariantId);
-    if (variant.suppliers.some(w => w.id === selectedWarehouse)) {
+    
+    if (variant.suppliers.some(w => w.id == selectedWarehouse)) {
       alert("This supplier is already added.");
       return;
     }
@@ -158,12 +160,35 @@ $(document).ready(function () {
     if (selectedWarehouseObject) {
       variant.suppliers.push(selectedWarehouseObject);
 
+      const newRowHtml = getSupplierRowHtml(variant, selectedWarehouseObject);
+      
+      const tableBody = $(`#collapse${activeVariantId}`).find("tbody");
+      
+      tableBody.append(newRowHtml);
+
       $("#addWarehouseModal").modal("hide");
-      renderVariants();
+      
     }
 
     return false;
   });
+
+  function getSupplierRowHtml(variant, w) {
+    return `
+      <tr>
+        <td>
+          <input type="hidden" name="data[product_variant_id][]" value="${variant.id}" />
+          <input type="hidden" name="data[supplier_id][]" value="${w.id}" />
+          <strong>${w.name}</strong>
+        </td>
+        <td>${w.phone_number} - (Email: ${w.email})</td>
+        <td>${w.country_flag}</td>
+        <td>
+          <button data-variant_id="${variant.id}" data-supplier_id="${w.id}" type="button" class="remove-supplier btn btn-sm btn-outline-danger">Remove</button>
+        </td>
+      </tr>`;
+  }
+
 
   function validateRow(row) {
     const qty = parseFloat(row.find(".qty").val());
@@ -195,21 +220,7 @@ $(document).ready(function () {
 
     variants.forEach((variant) => {
       const warehouseRows = variant.suppliers
-        .map(
-          (w) => `
-          <tr>
-            <td>
-              <input type="hidden" name="data[product_variant_id][]" value="${variant.id}" />
-              <input type="hidden" name="data[supplier_id][]" value="${w.id}" />
-              <strong>${w.name}</strong>
-            </td>
-            <td>${w.phone_number} - (Email: ${w.email})</td>
-            <td>${w.country_flag}</td>
-            <td>
-              <button data-variant_id="${variant.id}" data-supplier_id="${w.id}" type="button" class="remove-supplier btn btn-sm btn-outline-danger">Remove</button>
-            </td>
-          </tr>`
-        )
+        .map((w) => getSupplierRowHtml(variant, w))
         .join("");
 
       const card = `

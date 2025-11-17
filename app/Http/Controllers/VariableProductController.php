@@ -2,23 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
-use App\Models\ProductImage;
-use App\Models\BrandProduct;
-use App\Models\Product;
-use Illuminate\Support\Facades\Log;
-use App\Models\Unit;
-use App\Models\Warehouse;
-use App\Models\ProductBaseUnit;
-use App\Models\ProductAdditionalUnit;
-use App\Models\ProductTierPricing;
-use App\Models\ProductVariant;
-use App\Rules\UnitHierarchyRule;
+use App\Models\ProductAttributeVariant;
 use App\Rules\DefaultSellingUnitRule;
-use App\Models\Inventory;
-use App\Models\User;
+use App\Models\ProductAdditionalUnit;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Models\ProductVariantImage;
+use App\Models\ProductTierPricing;
+use App\Rules\UnitHierarchyRule;
+use App\Models\ProductAttribute;
+use App\Models\ProductBaseUnit;
 use App\Models\ProductSupplier;
+use App\Models\ProductSubtitue;
+use App\Models\ProductCategory;
+use App\Models\ProductVariant;
+use Illuminate\Http\Request;
+use App\Models\BrandProduct;
+use App\Models\ProductImage;
+use App\Models\Inventory;
+use App\Models\Warehouse;
+use App\Models\Product;
+use App\Models\Unit;
+use App\Models\User;
 
 class VariableProductController extends Controller
 {
@@ -117,6 +122,98 @@ class VariableProductController extends Controller
             ];
         })->values()->toArray();
 
+        $variantsForSubstitutes = collect();
+
+        if ($step == 8) {
+
+            $variantsForSubstitutes = ProductVariant::where('product_id', $product->id)
+                ->with([
+                    'substitutes.substituteProduct:id,name',
+                    'substitutes.substituteVariant:id,name,sku'
+                ])
+                ->get()
+                ->map(function ($variant) {
+                    return [
+                        'id' => $variant->id,
+                        'name' => $variant->name,
+                        'sku' => $variant->sku,
+                        'substitutes' => $variant->substitutes->map(function ($sub) {
+                            $productName = $sub->substituteProduct->name ?? 'N/A';
+                            $variantName = $sub->substituteVariant->name ?? 'N/A';
+                            $variantSku = $sub->substituteVariant->sku ?? 'N/A';
+                            return [
+                                'substitute_product_id' => $sub->source_product_id,
+                                'substitute_variant_id' => $sub->source_variant_id,
+                                'text_representation' => "{$productName} - {$variantName} (SKU: {$variantSku})"
+                            ];
+                        })
+                    ];
+                });
+
+        }
+
+        $reviewData = [];
+        if ($step == 9) {
+            $brand = BrandProduct::where('product_id', $product->id)->with('brand')->first();
+            $images = ProductImage::where('product_id', $product->id)->get();
+            
+            $reviewVariants = ProductVariant::where('product_id', $product->id)
+                ->with('attributes.attribute', 'variantImage')
+                ->get();
+            
+            $tierPricings = ProductTierPricing::where('product_id', $product->id)
+                ->with('variant:id,name')
+                ->get();
+
+            $allBaseUnits = ProductBaseUnit::where('product_id', $product->id)->with('unit')->get()->keyBy('id');
+            $allAddUnits = ProductAdditionalUnit::where('product_id', $product->id)->with('unit')->get()->keyBy('id');
+
+            $tierPricings->each(function($tp) use ($allBaseUnits, $allAddUnits) {
+                $unitId = $tp->product_additional_unit_id;
+                if ($allBaseUnits->has($unitId)) {
+                    $tp->unit_name = $allBaseUnits->get($unitId)->unit->title;
+                } elseif ($allAddUnits->has($unitId)) {
+                    $tp->unit_name = $allAddUnits->get($unitId)->unit->title;
+                } else {
+                    $tp->unit_name = 'N/A';
+                }
+            });
+            $tierPricingsByVariant = $tierPricings->groupBy('variant.name');
+
+            $categories = ProductCategory::where('product_id', $product->id)
+                ->with('category')
+                ->get();
+            $primaryCategory = $categories->firstWhere('is_primary', 1);
+            $additionalCategories = $categories->where('is_primary', 0);
+
+            $reviewData = [
+                'brand' => $brand->brand->name ?? 'N/A',
+                'primaryImage' => $images->firstWhere('is_primary', 1),
+                'secondaryImages' => $images->where('is_primary', 0),
+                'variants' => $reviewVariants,
+                'baseUnits' => $baseUnitsForAllV,
+                'unitHierarchy' => $unitHierarchy,
+                'tierPricings' => $tierPricingsByVariant,
+                'inventorySettings' => [
+                    'track_inventory' => $product->track_inventory_for_all_variant,
+                    'allow_backorder' => $product->allow_backorder,
+                    'enable_auto_reorder' => $product->enable_auto_reorder_alerts,
+                ],
+                'inventoryLocations' => $variants,
+                'suppliers' => $variantsForSupplier,
+                'primaryCategory' => $primaryCategory->category->name ?? 'N/A',
+                'additionalCategories' => $additionalCategories,
+                'seo' => [
+                    'title' => $product->seo_title,
+                    'description' => $product->seo_description,
+                    'feature' => $product->should_feature_on_home_page,
+                    'new' => $product->is_new_product,
+                    'best_seller' => $product->is_best_seller,
+                ],
+                'substitutes' => $variantsForSubstitutes,
+            ];
+        }
+
         return view("products/{$type}/step-{$step}", compact(
             'product',
             'availableUnits',
@@ -131,7 +228,9 @@ class VariableProductController extends Controller
             'suppliers',
             'variantsForSupplier',
             'baseUnitsForAllV',
-            'additionalUnitsForAllV'
+            'additionalUnitsForAllV',
+            'variantsForSubstitutes',
+            'reviewData'
         ));
     }
 
@@ -262,7 +361,7 @@ class VariableProductController extends Controller
                             foreach ($combinations as $set) {
                                 $parts = [];
                                 foreach ($set as $aid) {
-                                    $a = \App\Models\ProductAttribute::find($aid);
+                                    $a = ProductAttribute::find($aid);
                                     if ($a) $parts[] = $a->value;
                                 }
                                 $name = trim(($product->name ?: 'Product Name') . ' - ' . implode(' / ', $parts));
@@ -278,7 +377,7 @@ class VariableProductController extends Controller
                                     'status' => 1,
                                 ]);
                                 foreach ($set as $aid) {
-                                    \App\Models\ProductAttributeVariant::create([
+                                    ProductAttributeVariant::create([
                                         'product_id' => $product->id,
                                         'attribute_id' => $aid,
                                         'variant_id' => $variant->id,
@@ -298,7 +397,8 @@ class VariableProductController extends Controller
 
                             DB::commit();
                             return response()->json(['items' => $items]);
-                        } catch (\Throwable $th) {
+                        } catch (\Exception $e) {
+                            Log::error($e->getMessage());
                             DB::rollBack();
                             return response()->json(['message' => 'Failed to generate variants'], 422);
                         }
@@ -375,12 +475,12 @@ class VariableProductController extends Controller
                         $variants = ProductVariant::where('product_id', $product->id)->get();
                         $items = [];
                         foreach ($variants as $v) {
-                            $attrIds = \App\Models\ProductAttributeVariant::where('product_id', $product->id)->where('variant_id', $v->id)->pluck('attribute_id')->toArray();
+                            $attrIds = ProductAttributeVariant::where('product_id', $product->id)->where('variant_id', $v->id)->pluck('attribute_id')->toArray();
                             $parts = [];
                             if (!empty($attrIds)) {
-                                $parts = \App\Models\ProductAttribute::whereIn('id', $attrIds)->pluck('value')->toArray();
+                                $parts = ProductAttribute::whereIn('id', $attrIds)->pluck('value')->toArray();
                             }
-                            $img = \App\Models\ProductVariantImage::where('product_id', $product->id)->where('variant_id', $v->id)->where('is_primary', 1)->first();
+                            $img = ProductVariantImage::where('product_id', $product->id)->where('variant_id', $v->id)->where('is_primary', 1)->first();
                             $items[] = [
                                 'id' => $v->id,
                                 'name' => $v->name,
@@ -480,7 +580,7 @@ class VariableProductController extends Controller
                         if ($min <= $prevMax) {
                             return back()->withInput()->withErrors(['tier_pricings' => 'Overlapping or unordered ranges detected.']);
                         }
-                        if ($max !== null && $max <= $min) {
+                        if ($max !== null && $max < $min) {
                             return back()->withInput()->withErrors(['tier_pricings' => 'Max quantity must be greater than min quantity.']);
                         }
                         $prevMax = $max === null ? PHP_INT_MAX : $max;
@@ -669,7 +769,113 @@ class VariableProductController extends Controller
                 }
 
             case 8:
+                $product = Product::findOrFail($id);
 
+                if ($request->ajax()) {
+                    $request->validate([
+                        'op' => 'required|string',
+                        'term' => 'nullable|string',
+                    ]);
+
+                    if ($request->op === 'search-variants') {
+                        $term = $request->input('term', '');
+                        
+                        $variants = ProductVariant::query()
+                            ->where('product_id', '!=', $product->id)
+                            ->where(function ($query) use ($term) {
+                                $query->where('name', 'LIKE', "%{$term}%")
+                                      ->orWhere('sku', 'LIKE', "%{$term}%");
+                            })
+                            ->with('product:id,name')
+                            ->paginate(20);
+
+                        $grouped = $variants->getCollection()->groupBy('product.name');
+                        $results = [];
+                        
+                        foreach ($grouped as $productName => $variantGroup) {
+                            $children = $variantGroup->map(function($variant) {
+                                return [
+                                    'id' => $variant->id,
+                                    'text' => "{$variant->name} (SKU: {$variant->sku})"
+                                ];
+                            });
+
+                            if ($productName) {
+                                $results[] = [
+                                    'text' => $productName,
+                                    'children' => $children
+                                ];
+                            }
+                        }
+
+                        return response()->json([
+                            'results' => $results,
+                            'pagination' => ['more' => $variants->hasMorePages()]
+                        ]);
+                    }
+
+                    return response()->json(['message' => 'Unknown AJAX operation'], 422);
+                }
+
+
+                $validated = $request->validate([
+                    'substitutes' => 'nullable|array',
+                    'substitutes.*' => 'nullable|array',
+                    'substitutes.*.*' => 'required|integer|exists:product_variants,id',
+                ], [
+                    'substitutes.*.*.exists' => 'The selected substitute variant is invalid.'
+                ]);
+
+                try {
+                    DB::beginTransaction();
+
+                    $currentVariantIds = $product->variants()->pluck('id');
+
+                    ProductSubtitue::whereIn('variant_id', $currentVariantIds)->delete();
+
+                    $substitutesInput = $validated['substitutes'] ?? [];
+                    $dataToInsert = [];
+
+                    foreach ($substitutesInput as $currentVariantId => $sourceVariantIds) {
+
+                        if (!$currentVariantIds->contains($currentVariantId)) {
+                            Log::warning("Skipping substitute save for variant {$currentVariantId} not belonging to product {$product->id}");
+                            continue;
+                        }
+
+                        if (is_array($sourceVariantIds)) {
+
+                            $validSourceVariants = ProductVariant::whereIn('id', $sourceVariantIds)
+                                ->where('product_id', '!=', $product->id)
+                                ->get(['id', 'product_id']);
+
+                            foreach ($validSourceVariants as $sourceVariant) {
+                                $dataToInsert[] = [
+                                    'product_id' => $product->id,
+                                    'variant_id' => $currentVariantId,
+                                    'source_product_id' => $sourceVariant->product_id,
+                                    'source_variant_id' => $sourceVariant->id,
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ];
+                            }
+                        }
+                    }
+                    
+                    if (!empty($dataToInsert)) {
+                        ProductSubtitue::insert($dataToInsert);
+                    }
+
+                    DB::commit();
+
+                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(9), 'id' => encrypt($product->id)])
+                        ->with('success', 'Product substitutes saved successfully.');
+
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Failed to save product substitutes: '->getMessage(), ['product_id' => $id, 'input' => $request->all()]);
+                    return back()->withInput()->with('error', 'An error occurred while saving substitutes: ' . $e->getMessage());
+                }
                 
 
             case 9:

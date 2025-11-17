@@ -86,13 +86,12 @@
 @push('product-js')
 <script>
 const allWarehouses = @json($warehouses);
-
 const variants = @json($variants);
-
 let activeVariantId = null;
 
 $(document).ready(function () {
   renderVariants();
+
 
   $(document).on("click", ".btn-history", function () {
     const row = $(this).closest("tr");
@@ -110,13 +109,16 @@ $(document).ready(function () {
   $(document).on("click", ".btn-add-warehouse", function () {
     activeVariantId = $(this).data("variant-id");
     const variant = variants.find(v => v.id === activeVariantId);
-    const usedWarehouses = variant.warehouses.map(w => w);
     
-    const available = allWarehouses.filter(w => !usedWarehouses.map(z => z.id).includes(w.id));
+    const usedWarehouses = variant.warehouses.map(w => w.id);
+    
+    const available = allWarehouses.filter(w => !usedWarehouses.includes(w.id));
     
     const select = $("#warehouseSelect");
     select.empty();
+    
     if (available.length) {
+      select.append(`<option value="">Select Warehouse</option>`);
       available.forEach(w => select.append(`<option value="${w.id}">${w.code} - ${w.name}</option>`));
     } else {
       select.append(`<option value="">No more warehouses available</option>`);
@@ -133,7 +135,8 @@ $(document).ready(function () {
     }
 
     const variant = variants.find(v => v.id === activeVariantId);
-    if (variant.warehouses.some(w => w.id === selectedWarehouse)) {
+    
+    if (variant.warehouses.some(w => w.id == selectedWarehouse)) { 
       alert("This warehouse is already added.");
       return;
     }
@@ -141,7 +144,8 @@ $(document).ready(function () {
     let selectedWarehouseObject = allWarehouses.find(item => item.id == selectedWarehouse);
     
     if (selectedWarehouseObject) {
-      variant.warehouses.push({
+      
+      const newWarehouse = {
         id: selectedWarehouseObject.id,
         name: `${selectedWarehouseObject.code} - ${selectedWarehouseObject.name}`,
         qty: 0,
@@ -150,10 +154,14 @@ $(document).ready(function () {
         notes: "",
         lastUpdated: "—",
         history: []
-      });
+      };
+      
+      variant.warehouses.push(newWarehouse);
 
+      const newRowHtml = getWarehouseRowHtml(variant, newWarehouse);      
+      const tableBody = $(`#collapse${activeVariantId}`).find("tbody");
+      tableBody.append(newRowHtml);
       $("#addWarehouseModal").modal("hide");
-      renderVariants();
     }
 
     return false;
@@ -175,12 +183,46 @@ $(document).ready(function () {
       row.find(".reorder").addClass("is-invalid");
       valid = false;
     }
-    if (isNaN(max) || max < 0 || reorder > max) {
+
+    if (isNaN(max) || max < 0 || (max > 0 && reorder > max)) { 
       row.find(".max").addClass("is-invalid");
       valid = false;
     }
 
     return valid;
+  }
+
+  function getWarehouseRowHtml(variant, w) {
+    return `
+      <tr>
+        <td>
+          <input type="hidden" name="data[product_variant_id][]" value="${variant.id}" />
+          <input type="hidden" name="data[warehouse_id][]" value="${w.id}" />
+          <strong>${w.name}</strong>
+        </td>
+        <td><input type="number" name="data[item_quantity][]" class="form-control qty" value="${w.qty}" /></td>
+        <td><input type="number" name="data[item_reordering][]" class="form-control reorder" value="${w.reorder}" /></td>
+        <td><input type="number" name="data[item_max][]" class="form-control max" value="${w.max}" /></td>
+        <td><textarea class="form-control notes" name="data[item_notes][]" rows="1">${w.notes || ""}</textarea></td>
+        <td class="text-end">
+          <small class="text-muted d-block mb-1">Last updated: ${w.lastUpdated}</small>
+          <button type="button" class="btn btn-sm btn-outline-primary btn-history">View History</button>
+          <button type="button" class="btn btn-sm btn-outline-success btn-adjust">Adjust Stock</button>
+        </td>
+      </tr>
+      <tr class="warehouse-history" style="display:none;">
+        <td colspan="6">
+          <div class="history mt-3">
+            <ul class="stepper mb-0">
+              ${
+                w.history.length
+                  ? w.history.map(h => `<li class="step">${h}</li>`).join("")
+                  : "<li class='text-muted'>No history available</li>"
+              }
+            </ul>
+          </div>
+        </td>
+      </tr>`;
   }
 
   function renderVariants() {
@@ -189,38 +231,7 @@ $(document).ready(function () {
 
     variants.forEach((variant) => {
       const warehouseRows = variant.warehouses
-        .map(
-          (w) => `
-          <tr>
-            <td>
-              <input type="hidden" name="data[product_variant_id][]" value="${variant.id}" />
-              <input type="hidden" name="data[warehouse_id][]" value="${w.id}" />
-              <strong>${w.name}</strong>
-            </td>
-            <td><input type="number" name="data[item_quantity][]" class="form-control qty" value="${w.qty}" /></td>
-            <td><input type="number" name="data[item_reordering][]" class="form-control reorder" value="${w.reorder}" /></td>
-            <td><input type="number" name="data[item_max][]" class="form-control max" value="${w.max}" /></td>
-            <td><textarea class="form-control notes" name="data[item_notes][]" rows="1">${w.notes || ""}</textarea></td>
-            <td class="text-end">
-              <small class="text-muted d-block mb-1">Last updated: ${w.lastUpdated}</small>
-              <button type="button" class="btn btn-sm btn-outline-primary btn-history">View History</button>
-              <button type="button" class="btn btn-sm btn-outline-success btn-adjust">Adjust Stock</button>
-            </td>
-          </tr>
-          <tr class="warehouse-history" style="display:none;">
-            <td colspan="6">
-              <div class="history mt-3">
-                <ul class="stepper mb-0">
-                  ${
-                    w.history.length
-                      ? w.history.map(h => `<li class="step">${h}</li>`).join("")
-                      : "<li class='text-muted'>No history available</li>"
-                  }
-                </ul>
-              </div>
-            </td>
-          </tr>`
-        )
+        .map((w) => getWarehouseRowHtml(variant, w))
         .join("");
 
       const card = `

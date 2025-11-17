@@ -10,4 +10,8 @@ class ProductTierPricing extends Model
     use SoftDeletes;
 
     protected $guarded = [];
+
+    public function variant() {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
 }
