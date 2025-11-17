@@ -732,9 +732,9 @@ class VariableProductController extends Controller
                         'in_draft' => $request->input('action') === 'save_draft' ? 1 : 0,
                     ]);
 
-                    \App\Models\ProductCategory::where('product_id', $product->id)->delete();
+                    ProductCategory::where('product_id', $product->id)->delete();
 
-                    \App\Models\ProductCategory::create([
+                    ProductCategory::create([
                         'product_id' => $product->id,
                         'category_id' => $request->input('primary_category') ?? 1,
                         'is_primary' => 1,
@@ -747,7 +747,7 @@ class VariableProductController extends Controller
                         );
 
                         foreach ($additionalCategories as $categoryId) {
-                            \App\Models\ProductCategory::create([
+                            ProductCategory::create([
                                 'product_id' => $product->id,
                                 'category_id' => $categoryId,
                                 'is_primary' => 0,
@@ -873,12 +873,17 @@ class VariableProductController extends Controller
 
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    Log::error('Failed to save product substitutes: '->getMessage(), ['product_id' => $id, 'input' => $request->all()]);
+                    Log::error('Failed to save product substitutes: ' . $e->getMessage(), ['product_id' => $id, 'input' => $request->all()]);
                     return back()->withInput()->with('error', 'An error occurred while saving substitutes: ' . $e->getMessage());
                 }
                 
 
             case 9:
+
+                $product = Product::findOrFail($id);
+                $product->update(['in_draft' => 0]);
+
+                return redirect()->route('products.index')->with('success', 'Product setup completed successfully.');
 
                 break;
             default:

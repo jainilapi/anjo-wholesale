@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Models\ProductImage;
+use App\Models\ProductCategory;
 use App\Models\BrandProduct;
 use App\Models\Product;
 use Illuminate\Support\Facades\Log;
 use App\Models\Unit;
+use App\Models\ProductVariant;
 use App\Models\ProductBaseUnit;
 use App\Models\ProductAdditionalUnit;
 use App\Models\ProductTierPricing;
@@ -23,39 +25,84 @@ class SimpleProductController extends Controller
 {
     public static function view($product, $step, $type) {
         $product = Product::findOrFail($product->id);
-        
+
         $availableUnits = Unit::select('id', 'title')->get();
-        
+
         $baseUnit = ProductBaseUnit::where('product_id', $product->id)
             ->with('unit')
             ->first();
-        
+
         $additionalUnits = ProductAdditionalUnit::where('product_id', $product->id)
             ->with(['unit', 'parent'])
             ->orderBy('parent_id')
             ->get();
-        
-        $unitHierarchy = self::buildUnitHierarchy($additionalUnits, $baseUnit);
-        
+
+        $unitHierarchy = $baseUnitsForAllV = $additionalUnitsForAllV = [];
+
+        foreach ($product->variants as $thisVariant) {
+
+            $baseUnitForV = ProductBaseUnit::where('product_id', $product->id)
+                ->where('variant_id', $thisVariant->id)
+                ->with('unit')
+                ->first();
+
+            $additionalUnitsForV = ProductAdditionalUnit::where('product_id', $product->id)
+                ->where('variant_id', $thisVariant->id)
+                ->with(['unit', 'parent'])
+                ->orderBy('parent_id')
+                ->get();
+
+            $unitHierarchy[$thisVariant->id] = self::buildUnitHierarchy($additionalUnitsForV, $baseUnitForV);
+            $baseUnitsForAllV[$thisVariant->id] = $baseUnitForV;
+            $additionalUnitsForAllV[$thisVariant->id] = $additionalUnitsForV;
+        }
+
+        $units = Unit::get();
+
         $warehouses = Warehouse::select('id', 'code', 'name')->toBase()->get();
-        
-        $locations = Inventory::where('product_id', $product->id)
-            ->whereNull('product_variant_id')
-            ->with('warehouse')
-            ->get()
-            ->map(function ($location) {
-                return [
-                    'id' => $location->warehouse_id,
-                    'code' => $location->warehouse->code ?? 'N/A',
-                    'name' => $location->warehouse->name ?? 'N/A',
-                    'qty' => $location->quantity,
-                    'reorder' => $location->reorder_level,
-                    'max' => $location->max_stock_level,
-                    'notes' => $location->notes,
-                    'lastUpdated' => date('M d, Y H:i A', strtotime($location->updated_at)),
-                    'history' => []
-                ];
-            })->values();
+
+        $variants = ProductVariant::where('product_id', $product->id)->get()->map(function ($variant) {
+            return [
+                'id' => $variant->id,
+                'name' => $variant->name,
+                'sku' => $variant->sku,
+                'barcode' => $variant->barcode,
+                'status' => 'No Data',
+                'warehouses' => $variant->inventories()->with('warehouse')->get()->map(function ($location) {
+                    return [
+                        'id' => $location->warehouse_id,
+                        'code' => $location->warehouse->code ?? 'N/A',
+                        'name' => $location->warehouse->name ?? 'N/A',
+                        'qty' => $location->quantity,
+                        'reorder' => $location->reorder_level,
+                        'max' => $location->max_stock_level,
+                        'notes' => $location->notes,
+                        'lastUpdated' => date('M d, Y H:i A', strtotime($location->updated_at)),
+                        'history' => []
+                    ];
+                })->values()
+            ];
+        })->values();
+
+        $variantsForSupplier = ProductVariant::where('product_id', $product->id)->get()->map(function ($variant) {
+            return [
+                'id' => $variant->id,
+                'name' => $variant->name,
+                'sku' => $variant->sku,
+                'barcode' => $variant->barcode,
+                'status' => 'No Data',
+                'suppliers' => $variant->suppliers()->with(['supplier.country', 'variant'])->get()->map(function ($sup) {
+                    return [
+                        'id' => $sup->supplier_id ?? null,
+                        'name' => $sup->supplier->name ?? 'N/A',
+                        'phone_number' => '+' . ($sup->supplier->dial_code ?? '') . ' ' . ($sup->supplier->phone_number ?? 'N/A'),
+                        'country_flag' => $sup->supplier->country->emoji ?? 'N/A',
+                        'country_name' => $supplier->supplier->country->name ?? 'N/A',
+                        'email' => $sup->supplier->email ?? 'N/A'
+                    ];
+                })->values()
+            ];
+        })->values();
 
         $suppliers = User::with('country')->whereHas('roles', function ($innerBuilder) {
             return $innerBuilder->where('id', 5);
@@ -70,25 +117,114 @@ class SimpleProductController extends Controller
             ];
         })->values()->toArray();
 
-        $simpleSuppliers = ProductSupplier::where('product_id', $product->id)
-            ->whereNull('product_variant_id')
-            ->with(['supplier.country'])
-            ->get()
-            ->map(function ($sup) {
-                return [
-                    'id' => $sup->supplier_id ?? null,
-                    'name' => $sup->supplier->name ?? 'N/A',
-                    'phone_number' => '+' . ($sup->supplier->dial_code ?? '') . ' ' . ($sup->supplier->phone_number ?? 'N/A'),
-                    'country_flag' => $sup->supplier->country->emoji ?? 'N/A',
-                    'country_name' => $sup->supplier->country->name ?? 'N/A',
-                    'email' => $sup->supplier->email ?? 'N/A'
-                ];
-            })->values();
+        $variantsForSubstitutes = collect();
+
+        if ($step == 8) {
+
+            $variantsForSubstitutes = ProductVariant::where('product_id', $product->id)
+                ->with([
+                    'substitutes.substituteProduct:id,name',
+                    'substitutes.substituteVariant:id,name,sku'
+                ])
+                ->get()
+                ->map(function ($variant) {
+                    return [
+                        'id' => $variant->id,
+                        'name' => $variant->name,
+                        'sku' => $variant->sku,
+                        'substitutes' => $variant->substitutes->map(function ($sub) {
+                            $productName = $sub->substituteProduct->name ?? 'N/A';
+                            $variantName = $sub->substituteVariant->name ?? 'N/A';
+                            $variantSku = $sub->substituteVariant->sku ?? 'N/A';
+                            return [
+                                'substitute_product_id' => $sub->source_product_id,
+                                'substitute_variant_id' => $sub->source_variant_id,
+                                'text_representation' => "{$productName} - {$variantName} (SKU: {$variantSku})"
+                            ];
+                        })
+                    ];
+                });
+
+        }
+
+        $reviewData = [];
+
+        $brand = BrandProduct::where('product_id', $product->id)->with('brand')->first();
+        $images = ProductImage::where('product_id', $product->id)->get();
         
+        $reviewVariants = ProductVariant::where('product_id', $product->id)
+            ->with('attributes.attribute', 'variantImage')
+            ->get();
+        
+        $tierPricings = ProductTierPricing::where('product_id', $product->id)
+            ->with('variant:id,name')
+            ->get();
+
+        $allBaseUnits = ProductBaseUnit::where('product_id', $product->id)->with('unit')->get()->keyBy('id');
+        $allAddUnits = ProductAdditionalUnit::where('product_id', $product->id)->with('unit')->get()->keyBy('id');
+
+        $tierPricings->each(function($tp) use ($allBaseUnits, $allAddUnits) {
+            $unitId = $tp->product_additional_unit_id;
+            if ($allBaseUnits->has($unitId)) {
+                $tp->unit_name = $allBaseUnits->get($unitId)->unit->title;
+            } elseif ($allAddUnits->has($unitId)) {
+                $tp->unit_name = $allAddUnits->get($unitId)->unit->title;
+            } else {
+                $tp->unit_name = 'N/A';
+            }
+        });
+        $tierPricingsByVariant = $tierPricings->groupBy('variant.name');
+
+        $categories = ProductCategory::where('product_id', $product->id)
+            ->with('category')
+            ->get();
+        $primaryCategory = $categories->firstWhere('is_primary', 1);
+        $additionalCategories = $categories->where('is_primary', 0);
+
+        $reviewData = [
+            'brand' => $brand->brand->name ?? 'N/A',
+            'primaryImage' => $images->firstWhere('is_primary', 1),
+            'secondaryImages' => $images->where('is_primary', 0),
+            'variants' => $reviewVariants,
+            'baseUnits' => $baseUnitsForAllV,
+            'unitHierarchy' => $unitHierarchy,
+            'tierPricings' => $tierPricingsByVariant,
+            'inventorySettings' => [
+                'track_inventory' => $product->track_inventory_for_all_variant,
+                'allow_backorder' => $product->allow_backorder,
+                'enable_auto_reorder' => $product->enable_auto_reorder_alerts,
+            ],
+            'inventoryLocations' => $variants,
+            'suppliers' => $variantsForSupplier,
+            'primaryCategory' => $primaryCategory->category->name ?? 'N/A',
+            'additionalCategories' => $additionalCategories,
+            'seo' => [
+                'title' => $product->seo_title,
+                'description' => $product->seo_description,
+                'feature' => $product->should_feature_on_home_page,
+                'new' => $product->is_new_product,
+                'best_seller' => $product->is_best_seller,
+            ],
+            'substitutes' => $variantsForSubstitutes,
+        ];
+
         return view("products/{$type}/step-{$step}", compact(
-            'product', 'availableUnits', 'baseUnit', 
-            'additionalUnits', 'unitHierarchy', 'step', 'type',
-            'warehouses', 'locations', 'suppliers', 'simpleSuppliers'
+            'product',
+            'availableUnits',
+            'baseUnit',
+            'warehouses',
+            'additionalUnits',
+            'unitHierarchy',
+            'step',
+            'type',
+            'units',
+            'variants',
+            'suppliers',
+            'variantsForSupplier',
+            'baseUnitsForAllV',
+            'additionalUnitsForAllV',
+            'variantsForSubstitutes',
+            'reviewData'
         ));
     }
 
@@ -359,7 +495,67 @@ class SimpleProductController extends Controller
 
             case 6:
 
+                try {
+                    DB::beginTransaction();
+
+                    $product = Product::findOrFail($id);
+
+                    $product->update([
+                        'should_feature_on_home_page' => $request->input('should_feature_on_home_page', 0),
+                        'is_new_product' => $request->input('is_new_product', 0),
+                        'is_best_seller' => $request->input('is_best_seller', 0),
+                        'seo_title' => $request->input('seo_title'),
+                        'seo_description' => $request->input('seo_description'),
+                        'in_draft' => $request->input('action') === 'save_draft' ? 1 : 0,
+                    ]);
+
+                    ProductCategory::where('product_id', $product->id)->delete();
+
+                    ProductCategory::create([
+                        'product_id' => $product->id,
+                        'category_id' => $request->input('primary_category') ?? 1,
+                        'is_primary' => 1,
+                    ]);
+
+                    if ($request->has('additional_categories')) {
+                        $additionalCategories = array_diff(
+                            $request->input('additional_categories'),
+                            [$request->input('primary_category')]
+                        );
+
+                        foreach ($additionalCategories as $categoryId) {
+                            ProductCategory::create([
+                                'product_id' => $product->id,
+                                'category_id' => $categoryId,
+                                'is_primary' => 0,
+                            ]);
+                        }
+                    }
+
+                    DB::commit();
+
+                    return redirect()->route('product-management', ['type' => encrypt('simple'), 'step' => encrypt(7), 'id' => encrypt($product->id)])
+                        ->with('success', 'Data saved successfully');
+                } catch (\Exception $e) {
+                    DB::rollBack();
+
+                    return redirect()
+                        ->back()
+                        ->withInput()
+                        ->with('error', 'Failed to save product: ' . $e->getMessage());
+                }
+
+            case 7:
+
                 break;
+
+            case 8:
+
+                $product = Product::findOrFail($id);
+                $product->update(['in_draft' => 0]);
+
+                return redirect()->route('products.index')->with('success', 'Product setup completed successfully.');                
+
             default:
                 abort(404);
                 break;
