@@ -11,8 +11,11 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Unit;
 use App\Models\ProductBaseUnit;
 use App\Models\ProductAdditionalUnit;
+use App\Models\ProductTierPricing;
 use App\Rules\UnitHierarchyRule;
 use App\Rules\DefaultSellingUnitRule;
+use App\Models\Inventory;
+use App\Models\Warehouse;
 
 class SimpleProductController extends Controller
 {
@@ -32,9 +35,30 @@ class SimpleProductController extends Controller
         
         $unitHierarchy = self::buildUnitHierarchy($additionalUnits, $baseUnit);
         
+        $warehouses = Warehouse::select('id', 'code', 'name')->toBase()->get();
+        
+        $locations = Inventory::where('product_id', $product->id)
+            ->whereNull('product_variant_id')
+            ->with('warehouse')
+            ->get()
+            ->map(function ($location) {
+                return [
+                    'id' => $location->warehouse_id,
+                    'code' => $location->warehouse->code ?? 'N/A',
+                    'name' => $location->warehouse->name ?? 'N/A',
+                    'qty' => $location->quantity,
+                    'reorder' => $location->reorder_level,
+                    'max' => $location->max_stock_level,
+                    'notes' => $location->notes,
+                    'lastUpdated' => date('M d, Y H:i A', strtotime($location->updated_at)),
+                    'history' => []
+                ];
+            })->values();
+        
         return view("products/{$type}/step-{$step}", compact(
             'product', 'availableUnits', 'baseUnit', 
-            'additionalUnits', 'unitHierarchy', 'step', 'type'
+            'additionalUnits', 'unitHierarchy', 'step', 'type',
+            'warehouses', 'locations'
         ));
     }
 
@@ -103,11 +127,162 @@ class SimpleProductController extends Controller
                 return self::handleUnitConfigurationSubmission($request, $id, $type);
 
             case 3:
+                $product = Product::findOrFail($id);
+                $payload = $request->input('tier_pricings');
+                $items = [];
+                if ($payload) {
+                    try {
+                        $decoded = is_array($payload) ? $payload : json_decode($payload, true);
+                        if (is_array($decoded)) {
+                            $items = $decoded;
+                        }
+                    } catch (\Throwable $th) {
+                    }
+                }
 
-                break;
+                $request->merge(['_tier_items' => $items]);
+
+                $request->validate([
+                    '_tier_items' => 'nullable|array',
+                    '_tier_items.*.product_variant_id' => 'nullable',
+                    '_tier_items.*.product_additional_unit_id' => 'required|integer',
+                    '_tier_items.*.min_qty' => 'required|numeric|min:1',
+                    '_tier_items.*.max_qty' => 'nullable|numeric',
+                    '_tier_items.*.price_per_unit' => 'required|numeric|min:0.01',
+                    '_tier_items.*.discount_type' => 'required|in:0,1',
+                    '_tier_items.*.discount_amount' => 'nullable|numeric|min:0',
+                ]);
+
+                if (empty($items)) {
+                    return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(4), 'id' => encrypt($product->id)])
+                        ->with('success', 'Data saved successfully');
+                }
+
+                foreach ($items as $index => $row) {
+                    if (!empty($row['product_variant_id'])) {
+                        return back()->withInput()->withErrors(["_tier_items.$index.product_variant_id" => 'Variant is not allowed for simple products']);
+                    }
+
+                    $unitRowId = $row['product_additional_unit_id'] ?? 0;
+                    $belongs = ProductAdditionalUnit::where('product_id', $product->id)->where('id', $unitRowId)->exists()
+                        || ProductBaseUnit::where('product_id', $product->id)->where('id', $unitRowId)->exists();
+                    if (!$belongs) {
+                        return back()->withInput()->withErrors(["_tier_items.$index.product_additional_unit_id" => 'Invalid unit selection for this product']);
+                    }
+
+                    if ((int)($row['discount_type'] ?? 1) === 1) {
+                        $percent = (float)($row['discount_amount'] ?? 0);
+                        if ($percent < 0 || $percent > 100) {
+                            return back()->withInput()->withErrors(["_tier_items.$index.discount_amount" => 'Discount percentage must be between 0 and 100']);
+                        }
+                    }
+                }
+
+                $grouped = [];
+                foreach ($items as $row) {
+                    $key = '0-' . ($row['product_additional_unit_id'] ?? '0');
+                    $grouped[$key][] = $row;
+                }
+
+                foreach ($grouped as $key => $rows) {
+                    usort($rows, function ($a, $b) {
+                        return ($a['min_qty'] ?? 0) <=> ($b['min_qty'] ?? 0);
+                    });
+                    $prevMax = 0;
+                    foreach ($rows as $i => $r) {
+                        $min = (float)($r['min_qty'] ?? 0);
+                        $max = array_key_exists('max_qty', $r) && $r['max_qty'] !== null && $r['max_qty'] !== '' ? (float)$r['max_qty'] : null;
+                        if ($min <= $prevMax) {
+                            return back()->withInput()->withErrors(['tier_pricings' => 'Overlapping or unordered ranges detected.']);
+                        }
+                        if ($max !== null && $max < $min) {
+                            return back()->withInput()->withErrors(['tier_pricings' => 'Max quantity must be greater than min quantity.']);
+                        }
+                        $prevMax = $max === null ? PHP_INT_MAX : $max;
+                    }
+                }
+
+                try {
+                    DB::beginTransaction();
+                    ProductTierPricing::where('product_id', $product->id)->whereNull('product_variant_id')->delete();
+                    foreach ($items as $r) {
+                        ProductTierPricing::create([
+                            'product_id' => $product->id,
+                            'unit_type' => (int)$r['is_base_unit'],
+                            'product_variant_id' => null,
+                            'product_additional_unit_id' => (int)$r['product_additional_unit_id'],
+                            'min_qty' => (float)$r['min_qty'],
+                            'max_qty' => $r['max_qty'] === null || $r['max_qty'] === '' ? 0 : (float)$r['max_qty'],
+                            'price_per_unit' => (float)$r['price_per_unit'],
+                            'discount_type' => (int)$r['discount_type'],
+                            'discount_amount' => (float)($r['discount_amount'] ?? 0),
+                        ]);
+                    }
+                    DB::commit();
+                    return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(4), 'id' => encrypt($product->id)])
+                        ->with('success', 'Data saved successfully');
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    return back()->withInput()->with('error', 'Failed to save pricing tiers');
+                }
+
             case 4:
+                $product = Product::findOrFail($id);
 
-                break;
+                $validated = $request->validate([
+                    'data' => 'nullable|array',
+                    'data.warehouse_id' => 'nullable|array',
+                    'data.warehouse_id.*' => 'exists:warehouses,id',
+                    'data.item_quantity' => 'nullable|array',
+                    'data.item_quantity.*' => 'integer|min:0',
+                    'data.item_reordering' => 'nullable|array',
+                    'data.item_reordering.*' => 'integer|min:0',
+                    'data.item_max' => 'nullable|array',
+                    'data.item_max.*' => 'integer|min:0',
+                    'data.item_notes' => 'nullable|array',
+                    'data.item_notes.*' => 'string|max:255'
+                ]);
+
+                $product->track_inventory_for_all_variant = $request->track_inventory_for_all_variant == 'on' ? 1 : 0;
+                $product->allow_backorder = $request->allow_backorder == 'on' ? 1 : 0;
+                $product->enable_auto_reorder_alerts = $request->enable_auto_reorder_alerts == 'on' ? 1 : 0;
+                $product->save();
+
+                if (isset($validated['data']['warehouse_id'])) {
+                    foreach ($validated['data']['warehouse_id'] as $index => $warehouse_id) {
+                        $item_quantity = $validated['data']['item_quantity'][$index] ?? 0;
+                        $item_reordering = $validated['data']['item_reordering'][$index] ?? 0;
+                        $item_max = $validated['data']['item_max'][$index] ?? 0;
+                        $item_notes = $validated['data']['item_notes'][$index] ?? null;
+
+                        $inventory = Inventory::where('product_id', $product->id)
+                            ->whereNull('product_variant_id')
+                            ->where('warehouse_id', $warehouse_id)
+                            ->first();
+
+                        if ($inventory) {
+                            $inventory->update([
+                                'quantity' => $item_quantity,
+                                'reorder_level' => $item_reordering,
+                                'max_stock_level' => $item_max,
+                                'notes' => $item_notes,
+                            ]);
+                        } else {
+                            Inventory::create([
+                                'product_id' => $product->id,
+                                'product_variant_id' => null,
+                                'warehouse_id' => $warehouse_id,
+                                'quantity' => $item_quantity,
+                                'reorder_level' => $item_reordering,
+                                'max_stock_level' => $item_max,
+                                'notes' => $item_notes,
+                            ]);
+                        }
+                    }
+                }
+
+                return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(5), 'id' => encrypt($product->id)])
+                    ->with('success', 'Data saved successfully');
             case 5:
 
                 break;

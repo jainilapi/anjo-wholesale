@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('product_tier_pricings', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('product_id');
-            $table->unsignedBigInteger('product_variant_id');
+            $table->unsignedBigInteger('product_variant_id')->nullable();
+            $table->unsignedBigInteger('unit_type')->default(false)->comment('0 = Base Unit | 1 = Additional Unit');
             $table->unsignedBigInteger('product_additional_unit_id');
             $table->double('min_qty')->default(0);
             $table->double('max_qty')->default(0);
