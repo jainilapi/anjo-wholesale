@@ -16,6 +16,8 @@ use App\Rules\UnitHierarchyRule;
 use App\Rules\DefaultSellingUnitRule;
 use App\Models\Inventory;
 use App\Models\Warehouse;
+use App\Models\ProductSupplier;
+use App\Models\User;
 
 class SimpleProductController extends Controller
 {
@@ -54,11 +56,39 @@ class SimpleProductController extends Controller
                     'history' => []
                 ];
             })->values();
+
+        $suppliers = User::with('country')->whereHas('roles', function ($innerBuilder) {
+            return $innerBuilder->where('id', 5);
+        })->where('status', 1)->get()->map(function ($supplier) {
+            return [
+                'id' => $supplier->id,
+                'name' => $supplier->name,
+                'phone_number' => $supplier->dial_code . ' ' . $supplier->phone_number,
+                'country_flag' => $supplier->country->emoji ?? '',
+                'country_name' => $supplier->country->name ?? '',
+                'email' => $supplier->email
+            ];
+        })->values()->toArray();
+
+        $simpleSuppliers = ProductSupplier::where('product_id', $product->id)
+            ->whereNull('product_variant_id')
+            ->with(['supplier.country'])
+            ->get()
+            ->map(function ($sup) {
+                return [
+                    'id' => $sup->supplier_id ?? null,
+                    'name' => $sup->supplier->name ?? 'N/A',
+                    'phone_number' => '+' . ($sup->supplier->dial_code ?? '') . ' ' . ($sup->supplier->phone_number ?? 'N/A'),
+                    'country_flag' => $sup->supplier->country->emoji ?? 'N/A',
+                    'country_name' => $sup->supplier->country->name ?? 'N/A',
+                    'email' => $sup->supplier->email ?? 'N/A'
+                ];
+            })->values();
         
         return view("products/{$type}/step-{$step}", compact(
             'product', 'availableUnits', 'baseUnit', 
             'additionalUnits', 'unitHierarchy', 'step', 'type',
-            'warehouses', 'locations'
+            'warehouses', 'locations', 'suppliers', 'simpleSuppliers'
         ));
     }
 
@@ -284,8 +314,49 @@ class SimpleProductController extends Controller
                 return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(5), 'id' => encrypt($product->id)])
                     ->with('success', 'Data saved successfully');
             case 5:
+                $product = Product::findOrFail($id);
 
-                break;
+                $validated = $request->validate([
+                    'data' => 'nullable|array',
+                    'data.supplier_id' => 'nullable|array',
+                    'data.supplier_id.*' => 'exists:users,id'
+                ]);
+
+                $toKeep = [];
+
+                if (isset($validated['data']['supplier_id'])) {
+                    foreach ($validated['data']['supplier_id'] as $supplier_id) {
+                        $row = ProductSupplier::where('product_id', $product->id)
+                            ->whereNull('product_variant_id')
+                            ->where('supplier_id', $supplier_id)
+                            ->first();
+
+                        if (!$row) {
+                            $row = ProductSupplier::create([
+                                'product_id' => $product->id,
+                                'product_variant_id' => null,
+                                'supplier_id' => $supplier_id
+                            ]);
+                        }
+
+                        $toKeep[] = $row->id;
+                    }
+
+                    if (empty($toKeep)) {
+                        ProductSupplier::where('product_id', $product->id)->whereNull('product_variant_id')->delete();
+                    } else {
+                        ProductSupplier::where('product_id', $product->id)
+                            ->whereNull('product_variant_id')
+                            ->whereNotIn('id', $toKeep)
+                            ->delete();
+                    }
+                } else {
+                    ProductSupplier::where('product_id', $product->id)->whereNull('product_variant_id')->delete();
+                }
+
+                return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(6), 'id' => encrypt($product->id)])
+                    ->with('success', 'Data saved successfully');
+
             case 6:
 
                 break;
