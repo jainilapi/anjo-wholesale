@@ -301,7 +301,9 @@ class BundledProductController extends Controller
                 $product = Product::findOrFail($id);
 
                 // Make Bundle
-                
+
+                    
+
                 // Make Bundle
 
                 return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(3), 'id' => encrypt($product->id)])
