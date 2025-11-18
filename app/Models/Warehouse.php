@@ -16,12 +16,12 @@ class Warehouse extends Model
 
     public static function scopeW($query)
     {
-        return $query->where('type', 0);
+        return $query->where('type', 1);
     }
 
     public static function scopeL($query)
     {
-        return $query->where('type', 1);
+        return $query->where('type', 0);
     }
 
     public function country(): BelongsTo

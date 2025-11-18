@@ -22,14 +22,14 @@
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
       <strong>Simple Product Inventory</strong>
       <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddWarehouseSimple">
-        <i class="fa fa-plus"></i> Add Warehouse
+        <i class="fa fa-plus"></i> Add Warehouse / Location
       </button>
     </div>
     <div class="card-body">
       <table class="table align-middle table-bordered mb-0">
         <thead class="table-light">
           <tr>
-            <th>Warehouse</th>
+            <th>Warehouse / Location</th>
             <th width="12%">Quantity</th>
             <th width="12%">Reorder</th>
             <th width="12%">Max Stock</th>
@@ -47,20 +47,20 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Add Warehouse</h5>
+        <h5 class="modal-title">Add Warehouse / Location </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <div class="mb-3">
-          <label for="warehouseSelect" class="form-label">Select Warehouse</label>
+          <label for="warehouseSelect" class="form-label">Select Warehouse / Location</label>
           <select id="warehouseSelect" class="form-select">
-            <option value="">Select Warehouse</option>
+            <option value="">Select Warehouse / Location</option>
           </select>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="confirmAddWarehouse">Add Warehouse</button>
+        <button type="button" class="btn btn-primary" id="confirmAddWarehouse">Add</button>
       </div>
     </div>
   </div>
@@ -79,7 +79,7 @@
 @push('product-js')
 <script>
 const allWarehouses = @json($warehouses);
-let locations = @json([]);
+let locations = @json($simpleProductInventory ?? []);
 
 $(document).ready(function () {
   renderLocations();
@@ -104,7 +104,7 @@ $(document).ready(function () {
     select.empty();
     if (available.length) {
       select.append(`<option value="">Select Warehouse</option>`);
-      available.forEach(w => select.append(`<option value="${w.id}">${w.code} - ${w.name}</option>`));
+      available.forEach(w => select.append(`<option value="${w.id}">${w.code} - ${w.name} (${w.type ? 'Warehouse' : 'Location'})</option>`));
     } else {
       select.append(`<option value="">No more warehouses available</option>`);
     }
@@ -155,7 +155,7 @@ $(document).ready(function () {
       <tr>
         <td>
           <input type="hidden" name="data[warehouse_id][]" value="${w.id}" />
-          <strong>${w.name}</strong>
+          <strong>${w.name} (${w.type ? 'Warehouse' : 'Location'})</strong>
         </td>
         <td><input type="number" name="data[item_quantity][]" class="form-control qty" value="${w.qty}" /></td>
         <td><input type="number" name="data[item_reordering][]" class="form-control reorder" value="${w.reorder}" /></td>

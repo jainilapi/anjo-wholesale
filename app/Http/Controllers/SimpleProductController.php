@@ -76,7 +76,7 @@ class SimpleProductController extends Controller
 
         $units = Unit::get();
 
-        $warehouses = Warehouse::select('id', 'code', 'name')->toBase()->get();
+        $warehouses = Warehouse::select('id', 'code', 'name', 'type')->toBase()->get();
 
         $variants = ProductVariant::where('product_id', $product->id)->get()->map(function ($variant) {
             return [
@@ -137,33 +137,47 @@ class SimpleProductController extends Controller
         $variantsForSubstitutes = collect();
         $simpleSubstitutes = collect();
 
-        if ($step == 8) {
+        $variantsForSubstitutes = ProductVariant::where('product_id', $product->id)
+            ->with([
+                'substitutes.substituteProduct:id,name',
+                'substitutes.substituteVariant:id,name,sku'
+            ])
+            ->get()
+            ->map(function ($variant) {
+                return [
+                    'id' => $variant->id,
+                    'name' => $variant->name,
+                    'sku' => $variant->sku,
+                    'substitutes' => $variant->substitutes->map(function ($sub) {
+                        $productName = $sub->substituteProduct->name ?? 'N/A';
+                        $variantName = $sub->substituteVariant->name ?? 'N/A';
+                        $variantSku = $sub->substituteVariant->sku ?? 'N/A';
+                        return [
+                            'substitute_product_id' => $sub->source_product_id,
+                            'substitute_variant_id' => $sub->source_variant_id,
+                            'text_representation' => "{$productName} - {$variantName} (SKU: {$variantSku})"
+                        ];
+                    })
+                ];
+            });
 
-            $variantsForSubstitutes = ProductVariant::where('product_id', $product->id)
-                ->with([
-                    'substitutes.substituteProduct:id,name',
-                    'substitutes.substituteVariant:id,name,sku'
-                ])
-                ->get()
-                ->map(function ($variant) {
-                    return [
-                        'id' => $variant->id,
-                        'name' => $variant->name,
-                        'sku' => $variant->sku,
-                        'substitutes' => $variant->substitutes->map(function ($sub) {
-                            $productName = $sub->substituteProduct->name ?? 'N/A';
-                            $variantName = $sub->substituteVariant->name ?? 'N/A';
-                            $variantSku = $sub->substituteVariant->sku ?? 'N/A';
-                            return [
-                                'substitute_product_id' => $sub->source_product_id,
-                                'substitute_variant_id' => $sub->source_variant_id,
-                                'text_representation' => "{$productName} - {$variantName} (SKU: {$variantSku})"
-                            ];
-                        })
-                    ];
-                });
-
-        }
+        $simpleProductInventory = Inventory::where('product_id', $product->id)
+            ->whereNull('product_variant_id')
+            ->with('warehouse')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->warehouse_id,
+                    'name' => ($item->warehouse->code ?? '') . ' - ' . ($item->warehouse->name ?? ''), 
+                    'type' => $item->warehouse->type ?? 0, 
+                    'qty' => $item->quantity,
+                    'reorder' => $item->reorder_level,
+                    'max' => $item->max_stock_level,
+                    'notes' => $item->notes,
+                    'lastUpdated' => $item->updated_at ? $item->updated_at->format('M d, Y H:i A') : '—',
+                    'history' => []
+                ];
+            });
 
         $reviewData = [];
 
@@ -226,6 +240,21 @@ class SimpleProductController extends Controller
             'substitutes' => $variantsForSubstitutes,
         ];
 
+        $simpleProductSuppliers = ProductSupplier::where('product_id', $product->id)
+        ->whereNull('product_variant_id')
+        ->with(['supplier.country'])
+        ->get()
+        ->map(function ($item) {
+            $sup = $item->supplier;
+            return [
+                'id' => $sup->id ?? 0,
+                'name' => $sup->name ?? 'Unknown',
+                'phone_number' => ($sup->dial_code ?? '') . ' ' . ($sup->phone_number ?? ''), 
+                'country_flag' => $sup->country->emoji ?? '',
+                'email' => $sup->email ?? 'N/A'
+            ];
+        });
+
         return view("products/{$type}/step-{$step}", compact(
             'product',
             'availableUnits',
@@ -242,7 +271,9 @@ class SimpleProductController extends Controller
             'baseUnitsForAllV',
             'additionalUnitsForAllV',
             'variantsForSubstitutes',
-            'reviewData', 'simpleSubstitutes'
+            'reviewData', 'simpleSubstitutes',
+            'simpleProductInventory',
+            'simpleProductSuppliers'
         ));
     }
 
@@ -575,25 +606,54 @@ class SimpleProductController extends Controller
 
                     if ($request->op === 'search-variants') {
                         $term = $request->input('term', '');
-                        $variants = ProductVariant::query()
-                            ->where('product_id', '!=', $product->id)
-                            ->where(function ($query) use ($term) {
-                                $query->where('name', 'LIKE', "%{$term}%")
-                                      ->orWhere('sku', 'LIKE', "%{$term}%");
-                            })
-                            ->with('product:id,name')
-                            ->paginate(20);
 
-                        $grouped = $variants->getCollection()->groupBy('product.name');
+                        $variantsQuery = DB::table('product_variants as pv')
+                            ->join('products as p', 'pv.product_id', '=', 'p.id')
+                            ->select(
+                                'pv.id',
+                                'pv.name',
+                                'pv.sku',
+                                'p.name as product_name',
+                                DB::raw("'variant' as type")
+                            )
+                            ->where('pv.product_id', '!=', $product->id)
+                            ->where(function ($query) use ($term) {
+                                $query->where('pv.name', 'LIKE', "%{$term}%")
+                                      ->orWhere('pv.sku', 'LIKE', "%{$term}%");
+                            });
+
+                        $simpleProductsQuery = DB::table('products as p')
+                            ->select(
+                                'p.id',
+                                'p.name',
+                                'p.sku',
+                                'p.name as product_name',
+                                DB::raw("'simple' as type")
+                            )
+                            ->where('p.type', 'simple')
+                            ->where('p.id', '!=', $product->id)
+                            ->where(function ($query) use ($term) {
+                                $query->where('p.name', 'LIKE', "%{$term}%")
+                                      ->orWhere('p.sku', 'LIKE', "%{$term}%");
+                            });
+
+                        $combinedResults = $variantsQuery->union($simpleProductsQuery)->paginate(20);
+
+                        $grouped = $combinedResults->getCollection()->groupBy('product_name');
                         $results = [];
 
-                        foreach ($grouped as $productName => $variantGroup) {
-                            $children = $variantGroup->map(function($variant) {
+                        foreach ($grouped as $productName => $groupItems) {
+                            $children = $groupItems->map(function($item) {
+
+                                $text = $item->type === 'simple'
+                                    ? "{$item->name} (Simple Product - SKU: {$item->sku})"
+                                    : "{$item->name} (SKU: {$item->sku})";
+
                                 return [
-                                    'id' => $variant->id,
-                                    'text' => "{$variant->name} (SKU: {$variant->sku})"
+                                    'id' => $item->id,
+                                    'text' => $text,
                                 ];
-                            });
+                            })->values();
 
                             if ($productName) {
                                 $results[] = [
@@ -605,7 +665,7 @@ class SimpleProductController extends Controller
 
                         return response()->json([
                             'results' => $results,
-                            'pagination' => ['more' => $variants->hasMorePages()]
+                            'pagination' => ['more' => $combinedResults->hasMorePages()]
                         ]);
                     }
 
