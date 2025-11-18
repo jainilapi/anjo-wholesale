@@ -1,9 +1,11 @@
 @php
 
-    $steps = ['Basics', 'Pack Sizes', 'Pricing', 'Inventory', 'Suppliers', 'Category', 'Substitutes', 'Review'];
-
-    if ($type != 'simple') {
-        array_splice($steps, 1, 0, 'Variants');
+    if ($type == 'simple') {
+        $steps = ['Basics', 'Pack Sizes', 'Pricing', 'Inventory', 'Suppliers', 'Category', 'Substitutes', 'Review'];
+    } else if ($type == 'variable') {
+        $steps = ['Basics', 'Variants', 'Pack Sizes', 'Pricing', 'Inventory', 'Suppliers', 'Category', 'Substitutes', 'Review'];
+    } else {
+        $steps = ['Basics', 'Bundle', 'Category', 'Review'];
     }
 
 @endphp

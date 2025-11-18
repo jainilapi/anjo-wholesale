@@ -32,10 +32,10 @@
                                 <input class="form-check-input" type="radio" name="type_switch" id="typeVariable" value="variable" {{ $product->type === 'variable' ? 'checked' : '' }}>
                                 <label class="form-check-label" for="typeVariable">Variable - Product with attributes & variants</label>
                             </div>
-                            <!-- <div class="form-check">
+                            <div class="form-check">
                                 <input class="form-check-input" type="radio" name="type_switch" id="typeBundled" value="bundled" {{ $product->type === 'bundled' ? 'checked' : '' }}>
                                 <label class="form-check-label" for="typeBundled">Bundled - Multiple products sold together</label>
-                            </div> -->
+                            </div>
                         </div>
                     </div>
 
