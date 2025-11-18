@@ -35,7 +35,7 @@ return new class extends Migration
             $table->tinyInteger('bundled_product_price_type')->default(0)->comment('0 = Sum of all products price | 1 = Fixed bundle price');
             $table->double('bundled_product_fixed_price')->default(0);
 
-            $table->booealn('bundled_product_discount_type')->default(0)->comment('0 = Percentage | 1 = Fixed');
+            $table->boolean('bundled_product_discount_type')->default(0)->comment('0 = Percentage | 1 = Fixed');
             $table->double('bundled_product_discount')->default(0);
 
             $table->softDeletes();
