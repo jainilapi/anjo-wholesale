@@ -129,6 +129,26 @@ document.addEventListener('DOMContentLoaded', function() {
         bundled: "{{ route('product-management', ['type' => encrypt('bundled'), 'step' => encrypt(1), 'id' => encrypt($product->id)]) }}",
     };
 
+    $('#productStep1Form').validate({
+        rules: {
+            name: {
+                required: true
+            },
+            brand_id: {
+                required: true
+            },
+            "tags[]": {
+                required: true
+            },
+            primary_image: {
+                required: @if($existingPrimary) false @else true @endif
+            },
+        },
+        errorPlacement: function (error, element) {
+            error.appendTo(element.parent("div"));
+        }
+    });
+
     document.querySelectorAll('input[name="type_switch"]').forEach(r => r.addEventListener('change', function(){
         const to = this.value;
         if (urls[to]) window.location.href = urls[to];

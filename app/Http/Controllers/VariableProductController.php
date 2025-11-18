@@ -64,7 +64,7 @@ class VariableProductController extends Controller
 
         $units = Unit::get();
 
-        $warehouses = Warehouse::select('id', 'code', 'name')->toBase()->get();
+        $warehouses = Warehouse::select('id', 'code', 'name', 'type')->toBase()->get();
 
         $variants = ProductVariant::where('product_id', $product->id)->get()->map(function ($variant) {
             return [

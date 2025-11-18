@@ -103,10 +103,10 @@ $(document).ready(function () {
     const select = $("#warehouseSelect");
     select.empty();
     if (available.length) {
-      select.append(`<option value="">Select Warehouse</option>`);
+      select.append(`<option value="">Select Warehouse / Location</option>`);
       available.forEach(w => select.append(`<option value="${w.id}">${w.code} - ${w.name} (${w.type ? 'Warehouse' : 'Location'})</option>`));
     } else {
-      select.append(`<option value="">No more warehouses available</option>`);
+      select.append(`<option value="">No more warehouses / location available</option>`);
     }
     $("#addWarehouseModal").modal("show");
   });
