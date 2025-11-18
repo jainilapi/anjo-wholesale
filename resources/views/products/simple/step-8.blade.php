@@ -157,13 +157,5 @@
             </div>
         </div>
 
-        <div class="d-flex justify-content-end gap-2">
-            <button type="submit" name="action" value="save_draft" class="btn btn-secondary">
-                Save Draft
-            </button>
-            <button type="submit" name="action" value="complete" class="btn btn-primary">
-                Complete & Publish
-            </button>
-        </div>
     </div>
 @endsection
