@@ -26,7 +26,7 @@
                         @if ($variantsForSubstitutes->isEmpty())
                             <div class="alert alert-warning" role="alert">
                                 You must <a
-                                    href="{{ route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(2), 'id' => encrypt($product->id)]) }}">generate
+                                    href="{{ route('product-management', ['type' => encrypt($type), 'step' => encrypt(2), 'id' => encrypt($product->id)]) }}">generate
                                     variants</a> in Step 2 before you can assign substitutes.
                             </div>
                         @else
@@ -70,7 +70,7 @@
                 closeOnSelect: false,
                 allowClear: true,
                 ajax: {
-                    url: '{{ route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(8), 'id' => encrypt($product->id)]) }}',
+                    url: '{{ route('product-management', ['type' => encrypt($type), 'step' => encrypt(8), 'id' => encrypt($product->id)]) }}',
                     type: 'POST',
                     dataType: 'json',
                     delay: 250,

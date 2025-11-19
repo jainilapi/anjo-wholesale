@@ -108,7 +108,7 @@ class ProductController extends Controller
             abort(404, $notFoundMessage);
         }
 
-        if ($type == 'bundled' && !($step >= 1 && $step <= 3)) {
+        if ($type == 'bundled' && !($step >= 1 && $step <= 4)) {
             abort(404, $notFoundMessage);
         }
 

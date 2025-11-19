@@ -205,6 +205,7 @@ class SimpleProductController extends Controller
                 $tp->unit_name = 'N/A';
             }
         });
+        
         $tierPricingsByVariant = $tierPricings->groupBy('variant.name');
 
         $categories = ProductCategory::where('product_id', $product->id)
@@ -332,7 +333,7 @@ class SimpleProductController extends Controller
                     }
 
                     DB::commit();
-                    return redirect()->route('product-management', ['type' => encrypt('simple'), 'step' => encrypt(2), 'id' => encrypt($product->id)])
+                    return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(2), 'id' => encrypt($product->id)])
                         ->with('success', 'Data saved successfully');
                 } catch (\Exception $e) {
                     DB::rollBack();
@@ -583,7 +584,7 @@ class SimpleProductController extends Controller
 
                     DB::commit();
 
-                    return redirect()->route('product-management', ['type' => encrypt('simple'), 'step' => encrypt(7), 'id' => encrypt($product->id)])
+                    return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(7), 'id' => encrypt($product->id)])
                         ->with('success', 'Data saved successfully');
                 } catch (\Exception $e) {
                     DB::rollBack();
@@ -712,7 +713,7 @@ class SimpleProductController extends Controller
 
                     DB::commit();
 
-                    return redirect()->route('product-management', ['type' => encrypt('simple'), 'step' => encrypt(8), 'id' => encrypt($product->id)])
+                    return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(8), 'id' => encrypt($product->id)])
                         ->with('success', 'Data saved successfully');
                 } catch (\Exception $e) {
                     DB::rollBack();

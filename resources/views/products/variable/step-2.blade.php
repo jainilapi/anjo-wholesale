@@ -56,7 +56,7 @@ $attributes = \App\Models\ProductAttribute::where('product_id', $product->id)
 const savedAttributes = @json($attributes ?? []);
 
 $(function(){
-    const stepUrl = "{{ route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(2), 'id' => encrypt($product->id)]) }}";
+    const stepUrl = "{{ route('product-management', ['type' => encrypt($type), 'step' => encrypt(2), 'id' => encrypt($product->id)]) }}";
 
     function buildAttribute(title = '', values = []){
         const id = 'attr_'+Math.random().toString(36).slice(2);

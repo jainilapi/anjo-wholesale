@@ -14,8 +14,8 @@
                     </div>
                     <div class="card-body">
                         @php
-                            $editLink = function ($stepNumber) use ($product) {
-                                return route('product-management', ['type' => encrypt('simple'), 'step' => encrypt($stepNumber), 'id' => encrypt($product->id)]);
+                            $editLink = function ($stepNumber) use ($product, $type) {
+                                return route('product-management', ['type' => encrypt($type), 'step' => encrypt($stepNumber), 'id' => encrypt($product->id)]);
                             };
                         @endphp
 

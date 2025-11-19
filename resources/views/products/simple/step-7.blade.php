@@ -56,7 +56,7 @@
                 closeOnSelect: false,
                 allowClear: true,
                 ajax: {
-                    url: '{{ route('product-management', ['type' => encrypt('simple'), 'step' => encrypt(7), 'id' => encrypt($product->id)]) }}',
+                    url: '{{ route('product-management', ['type' => encrypt($type), 'step' => encrypt(7), 'id' => encrypt($product->id)]) }}',
                     type: 'POST',
                     dataType: 'json',
                     delay: 250,

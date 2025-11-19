@@ -221,6 +221,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const variantWrapper = document.getElementById('variantSelectorWrapper');
     const modalEl = document.getElementById('bundleModal');
 
+    $(variantSelect).select2({
+        width: "100%",
+        placeholder: 'Select a variant',
+        dropdownParent: $('#bundleModal')
+    });
+
+    $(simpleProductSelect).select2({
+        width: "100%",
+        placeholder: 'Select a product',
+        dropdownParent: $('#bundleModal')
+    });
+
     const bundleMap = {};
     (catalog.simple || []).forEach(item => bundleMap[item.key] = item);
     (catalog.variant || []).forEach(item => bundleMap[item.key] = item);
@@ -260,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             return `
                 <div class="bundle-item-card card">
-                    <div class="card-body">
+                    <div class="card-body" style="border: 1px solid #00000042;border-radius: 15px;">
                         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                             <div>
                                 <div class="d-flex align-items-center gap-2 mb-1">
@@ -270,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <div class="text-muted small">SKU: ${escapeHtml(data.sku || 'N/A')}</div>
                                 ${data.type === 'variable' ? `<div class="text-muted small">Variant: ${escapeHtml(data.label)}</div>` : ''}
                             </div>
-                            <button type="button" class="btn btn-link text-danger p-0 remove-bundle-item" data-key="${item.key}">Remove</button>
+                            <button type="button" class="btn btn-danger remove-bundle-item" data-key="${item.key}">Remove</button>
                         </div>
                         <div class="mt-3">
                             <div class="fw-semibold mb-2">Units</div>

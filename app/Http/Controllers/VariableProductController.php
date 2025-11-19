@@ -291,7 +291,7 @@ class VariableProductController extends Controller
                     }
 
                     DB::commit();
-                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(2), 'id' => encrypt($product->id)])
+                    return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(2), 'id' => encrypt($product->id)])
                         ->with('success', 'Data saved successfully');
                 } catch (\Exception $e) {
                     DB::rollBack();
@@ -497,7 +497,7 @@ class VariableProductController extends Controller
                     return response()->json(['message' => 'Unknown operation'], 422);
                 }
 
-                return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(3), 'id' => encrypt($product->id)])
+                return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(3), 'id' => encrypt($product->id)])
                     ->with('success', 'Data saved successfully');
             case 3:
                 $product = Product::findOrFail($id);
@@ -507,7 +507,7 @@ class VariableProductController extends Controller
                     self::handleUnitConfigurationSubmission($variant, $id, $type);
                 }
 
-                return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(4), 'id' => encrypt($product->id)])
+                return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(4), 'id' => encrypt($product->id)])
                     ->with('success', 'Data saved successfully');
 
             case 4:
@@ -538,7 +538,7 @@ class VariableProductController extends Controller
                 ]);
 
                 if (empty($items)) {
-                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(5), 'id' => encrypt($product->id)])
+                    return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(5), 'id' => encrypt($product->id)])
                         ->with('success', 'Data saved successfully');
                 }
 
@@ -603,7 +603,7 @@ class VariableProductController extends Controller
                         ]);
                     }
                     DB::commit();
-                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(5), 'id' => encrypt($product->id)])
+                    return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(5), 'id' => encrypt($product->id)])
                         ->with('success', 'Data saved successfully');
                 } catch (\Throwable $th) {
                     DB::rollBack();
@@ -667,7 +667,7 @@ class VariableProductController extends Controller
                     }
                 }
 
-                return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(6), 'id' => encrypt($product->id)])
+                return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(6), 'id' => encrypt($product->id)])
                     ->with('success', 'Data saved successfully');
 
 
@@ -711,7 +711,7 @@ class VariableProductController extends Controller
                     }
                 }
 
-                return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(7), 'id' => encrypt($product->id)])
+                return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(7), 'id' => encrypt($product->id)])
                     ->with('success', 'Data saved successfully');
 
 
@@ -757,7 +757,7 @@ class VariableProductController extends Controller
 
                     DB::commit();
 
-                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(8), 'id' => encrypt($product->id)])
+                    return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(8), 'id' => encrypt($product->id)])
                         ->with('success', 'Data saved successfully');
                 } catch (\Exception $e) {
                     DB::rollBack();
@@ -868,7 +868,7 @@ class VariableProductController extends Controller
 
                     DB::commit();
 
-                    return redirect()->route('product-management', ['type' => encrypt('variable'), 'step' => encrypt(9), 'id' => encrypt($product->id)])
+                    return redirect()->route('product-management', ['type' => encrypt($type), 'step' => encrypt(9), 'id' => encrypt($product->id)])
                         ->with('success', 'Product substitutes saved successfully.');
 
                 } catch (\Exception $e) {
