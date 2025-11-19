@@ -283,6 +283,7 @@ class SimpleProductController extends Controller
             case 1:
                 $request->validate([
                     'name' => 'required|string|max:255',
+                    'sku' => 'required|string|max:255',
                     'brand_id' => 'required|integer|exists:brands,id',
                     'short_description' => 'required|string',
                     'long_description' => 'required|string',
@@ -298,6 +299,7 @@ class SimpleProductController extends Controller
 
                     $product->update([
                         'name' => $request->string('name'),
+                        'sku' => $request->string('sku'),
                         'short_description' => $request->input('short_description'),
                         'long_description' => $request->input('long_description'),
                         'status' => (bool) $request->input('status', false),

@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
             BrandSeeder::class,
             CategorySeeder::class,
             UnitSeeder::class,
-            ProductSeeder::class,
+            // ProductSeeder::class,
             CitiesTableChunkOneSeeder::class,
             CitiesTableChunkTwoSeeder::class,
             CitiesTableChunkThreeSeeder::class,

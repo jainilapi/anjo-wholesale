@@ -37,6 +37,7 @@
                                     </div>
                                     <div class="col-md-9">
                                         <p class="mb-1"><strong>Name:</strong> {{ $product->name }}</p>
+                                        <p class="mb-1"><strong>SKU:</strong> {{ $product->sku }}</p>
                                         <p class="mb-1"><strong>Brand:</strong> {{ $reviewData['brand'] }}</p>
                                         <p class="mb-1"><strong>Status:</strong>
                                             {!! $product->status

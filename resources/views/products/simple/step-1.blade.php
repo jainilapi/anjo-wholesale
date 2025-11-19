@@ -11,6 +11,12 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label"> SKU <span class="text-danger"> * </span> </label>
+                        <input type="text" name="sku" class="form-control" value="{{ old('sku', $product->sku) }}" required>
+                        @error('sku')<div class="text-danger small">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">Brand <span class="text-danger"> * </span></label>
                         <select name="brand_id" id="brandSelect" class="form-select" data-placeholder="Select brand" required>
                             @php($selectedBrand = optional($product->brands->first())->id)
@@ -132,6 +138,9 @@ document.addEventListener('DOMContentLoaded', function() {
     $('#productStep1Form').validate({
         rules: {
             name: {
+                required: true
+            },
+            sku: {
                 required: true
             },
             brand_id: {
